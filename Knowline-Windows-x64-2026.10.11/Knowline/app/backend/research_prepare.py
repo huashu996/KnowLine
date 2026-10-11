@@ -9,6 +9,35 @@ def key(context):
     return (context.get('task'),scope.get('query'),scope.get('from_year'),scope.get('to_year'),scope.get('target_count'),scope.get('domain_id'),scope.get('network_policy'),json.dumps(scope.get('source_policy',{}),sort_keys=True),json.dumps(scope.get('search_plan',{}),sort_keys=True),scope.get('connected_papers_url'))
 
 
+def retry_graph(store,job):
+    """Resume this job's intact draft by its manifest path, including local names.
+
+    This only avoids another discovery request; the executor and final ingest
+    must still review evidence, current metadata and all artifact hashes.
+    """
+    if job['task']!='paper_relationships':return None
+    output=contained(store.project,job['context']['output_dir'])
+    for name in ('result.previous.json','result.json'):
+        try:
+            manifest_path=output/name
+            if not manifest_path.is_file() or manifest_path.stat().st_size>32*1024*1024:continue
+            manifest=json.loads(manifest_path.read_text('utf-8-sig'))
+            if manifest.get('job_id')!=job['id']:continue
+            path=manifest.get('paper_graph_artifact')
+            artifact=next((a for a in manifest.get('artifacts',[]) if a.get('path')==path),None)
+            if not artifact:continue
+            file=contained(store.project,path)
+            if not file.is_relative_to(output) or file.stat().st_size>2*1024*1024 or digest(file)!=artifact.get('sha256'):continue
+            graph=json.loads(file.read_text('utf-8-sig'))
+            from .paper_graph import validate
+            validate(graph,job['context']['literature_search'])
+            return {'path':path,'sha256':artifact['sha256'],'node_count':len(graph['nodes']),
+                    'manifest_path':manifest_path.relative_to(store.project).as_posix(),
+                    'requires_agent_review':True,'new_search_completed':False}
+        except (OSError,ValueError,KeyError,TypeError,DomainError):continue
+    return None
+
+
 def related_memory(store,job,output):
     """Freeze bounded, accepted evidence for a different query; never auto-publish it."""
     query=job['context']['literature_search']['query'].casefold()
@@ -72,6 +101,12 @@ def prepare(store,job):
     started=time.monotonic();context=job['context'];output=contained(store.project,context['output_dir'])
     info={'cache':'cold','reused_artifacts':[],'source_job_id':None,'scope_unchanged':True}
     if job['task'] not in {'discover_papers','paper_relationships'}:return info
+    draft=retry_graph(store,job)
+    if draft:
+        info.update(cache='retry_draft',source_job_id=job['id'],retry_graph=draft,
+                    reused_artifacts=[draft],duration_seconds=round(time.monotonic()-started,3))
+        atomic_json(output/'research-preparation.json',info)
+        return info
     candidates=[]
     for file in (store.state/'jobs').glob('*/context.json'):
         if file.parent.name==job['id']:continue

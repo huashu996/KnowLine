@@ -152,6 +152,8 @@ class GuardedRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def fetch_pdf(store,node,record,source,seconds):
+    from .institutional_access import normalized_pdf_identity
+    identity=normalized_pdf_identity({**(record or node),'pdf_identity':source.get('pdf_identity')})
     access=safe_url(source.get('access_url') or source.get('publisher_url'),public_copy=True)
     publisher=safe_url(source['publisher_url']);host=urllib.parse.urlsplit(access).hostname
     university=bool(host.endswith('.edu') or re.search(r'\.(?:edu|ac)\.[a-z]{2}$',host))
@@ -164,7 +166,7 @@ def fetch_pdf(store,node,record,source,seconds):
     if legacy:
         from .official_copy import binding_valid
         if not record:raise DomainError('official_source_proof_required')
-        identity={**(source.get('pdf_identity') or {k:record[k] for k in ('doi','title','authors')}),'official_pdf_url':access}
+        identity={**identity,'official_pdf_url':access}
         if not any(binding_valid(b,identity,record,store.root/'.kw-public-request.pdf') for b in record.get('public_copy_bindings',[])):raise DomainError('official_source_proof_required')
     if not public_destination(access,hosts,allow_translated=True,public_copy=legacy):raise DomainError('public_pdf_destination_unsafe')
     # Publisher OA may initialize an anonymous first-party session (Springer
@@ -203,7 +205,7 @@ def fetch_pdf(store,node,record,source,seconds):
                         if size>MAX_PDF:raise DomainError('public_pdf_size_limit')
                         file.write(chunk)
                 break
-        identity=dict(source.get('pdf_identity') or {k:node.get(k) for k in ('doi','title','authors')})
+        identity=dict(identity)
         identity.pop('publisher_pdf_url',None)
         identity.pop('official_pdf_url',None)
         if any(b.get('pdf_url')==access for b in (record or {}).get('public_copy_bindings',[])):identity['official_pdf_url']=access

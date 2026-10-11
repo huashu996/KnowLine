@@ -221,7 +221,7 @@ def math_signature(path):
             import unicodedata
             # Word canonicalizes U+2212 to '-' and mathematical alphabet
             # glyphs to base letters plus math font properties during paste.
-            return unicodedata.normalize('NFKC',''.join(n.text or '' for n in node.iter() if n.tag=='{'+M+'}t')).replace('−','-')
+            return unicodedata.normalize('NFKC',''.join(n.text or '' for n in node.iter() if n.tag=='{'+M+'}t')).replace('−','-').replace('∗','*')
         children=[]
         for child in node:
             value=normalize(child)
@@ -263,13 +263,23 @@ def native_verify(output,count,fragment_name='fragment.docx'):
         if app is not None and security is not None:app.AutomationSecurity=security
         pythoncom.CoUninitialize()
 
-def revise_unsubmitted(output,content,content_hash,fragment_name='fragment.docx'):
+def revise_unsubmitted(output,content,content_hash,fragment_name='fragment.docx',job_id=None):
     """One concentrated correction; accepted jobs are rejected by the service."""
     previous_path=output/'previous-build.json'
     fragment=contained(output,fragment_name)
     if previous_path.exists():raise DomainError('office_revision_limit')
-    validation=json.loads((output/'validation.json').read_text('utf-8'))
     state=json.loads((output/'build-state.json').read_text('utf-8'))
+    validation_path=output/'validation.json'
+    if validation_path.is_file():
+        validation=json.loads(validation_path.read_text('utf-8'))
+    else:
+        # A failed native verification can leave a genuine build but no
+        # validation report. Recover only the exact hash-tracked draft; do not
+        # treat that draft as a verified or accepted result.
+        if not isinstance(job_id,str) or not re.fullmatch(r'j_[0-9a-f-]{36}',job_id):raise DomainError('office_fragment_not_ready')
+        if state.get('revision_count',0) or not re.fullmatch(r'[0-9a-f]{64}',str(state.get('fragment_sha256',''))):raise DomainError('office_fragment_not_ready')
+        if any(output.glob('preview-*.png')):raise DomainError('office_visual_review_required')
+        validation={'job_id':job_id,'fragment_sha256':state['fragment_sha256'],'preview_sha256':{},'native_verification_incomplete':True}
     if content_hash==state['content_sha256']:raise DomainError('office_revision_unchanged')
     if digest(fragment)!=validation['fragment_sha256']:raise DomainError('artifact_hash_mismatch')
     files=[output/name for name in [fragment_name,'validation.json','build-state.json','paste-check.docx','preview.pdf']]
@@ -302,7 +312,7 @@ def build(project,job_id,content_path,revise=False):
     if content_path.stat().st_size>250000:raise DomainError('office_content_limit')
     content=json.loads(content_path.read_text('utf-8-sig'));selection=context['office_selection'];resource=context['resources'][0]
     if content.get('source_image_sha256')!=selection['image']['sha256'] or content.get('source_version_id')!=resource['version_id']:raise DomainError('scope_violation')
-    if revise:revise_unsubmitted(output,content,digest(content_path),fragment_name)
+    if revise:revise_unsubmitted(output,content,digest(content_path),fragment_name,job_id)
     if any((output/name).exists() for name in ('result.json','validation.json')):raise DomainError('office_output_exists')
     state_path=output/'build-state.json';content_hash=digest(content_path)
     if fragment.exists():

@@ -1,4 +1,4 @@
-"""Scoped PowerPoint steps run in the desktop service rather than model sandboxes."""
+"""Scoped native Office steps run in the desktop service rather than model sandboxes."""
 import json
 import os
 import subprocess
@@ -9,6 +9,65 @@ from .layout import app_dir
 from .office_clipboard import check
 
 _lock = threading.Lock()
+
+
+def word_scope(store,job_id,body):
+    job=store.job(job_id)
+    if job['task']!='proposal_word' or job['status'] not in {'running','failed','partial'} or body.get('operation')!='render_word':
+        raise DomainError('office_native_scope_invalid',409)
+    output=contained(store.project,job['context']['output_dir'])
+    target=contained(store.project,job['context']['proposal']['target_path'],False)
+    supplied=contained(store.project,body.get('presentation',''),False)
+    if target!=supplied or not target.is_relative_to(output) or not target.is_file() or target.suffix.lower()!='.docx':
+        raise DomainError('office_native_scope_invalid',409)
+    check(target,'word')
+    return job,target,output
+
+
+def render_word(store,job_id,body):
+    """Read-only export of the frozen task's exact DOCX, never another open document."""
+    import pythoncom
+    import win32com.client
+    from .pdf import open_pdf,fitz
+    job,target,output=word_scope(store,job_id,body)
+    with _lock:
+        word_scope(store,job_id,body)
+        before=digest(target);review=output/'native-word-review';review.mkdir(exist_ok=True)
+        export=review/('.kw-render-'+job_id+'.pdf')
+        document=application=None;pages=[]
+        pythoncom.CoInitialize()
+        try:
+            application=win32com.client.DispatchEx('Word.Application')
+            application.Visible=False;application.DisplayAlerts=0;application.AutomationSecurity=3
+            document=application.Documents.Open(str(target),ConfirmConversions=False,ReadOnly=True,AddToRecentFiles=False,Visible=False)
+            if Path(str(document.FullName)).resolve()!=target.resolve():raise DomainError('office_wrong_document')
+            document.ExportAsFixedFormat(str(export),17,OpenAfterExport=False)
+            document.Close(0);document=None
+            with open_pdf(export) as pdf:
+                if not 1<=len(pdf)<=150:raise DomainError('office_native_page_limit')
+                for index,page in enumerate(pdf):
+                    path=review/('page-'+str(index+1)+'.png')
+                    scale=min(2,2400/max(page.rect.width,page.rect.height))
+                    page.get_pixmap(matrix=fitz.Matrix(scale,scale),alpha=False).save(path)
+                    pages.append({'path':path.relative_to(store.project).as_posix(),'sha256':digest(path)})
+            if digest(target)!=before:raise DomainError('artifact_hash_mismatch')
+            result={'operation':'render_word','document':target.relative_to(store.project).as_posix(),'document_sha256':before,'desktop_service_execution':True,'read_only':True,'page_count':len(pages),'previews':pages,'visual_review_required':True}
+            atomic_json(review/'render-report.json',result)
+            return result
+        except DomainError:raise
+        except Exception as exc:
+            atomic_json(review/'render-failure.json',{'operation':'render_word','error_type':type(exc).__name__,'reason':'native_word_export_failed'})
+            raise DomainError('office_word_render_unavailable',409)
+        finally:
+            if document is not None:
+                try:document.Close(0)
+                except Exception:pass
+            if application is not None:
+                try:
+                    if application.Documents.Count==0:application.Quit(0)
+                except Exception:pass
+            pythoncom.CoUninitialize()
+            if export.is_file():export.unlink()
 
 
 def scope(store, job_id, body):
@@ -70,6 +129,7 @@ def scope(store, job_id, body):
 def run(store, job_id, body):
     if os.name != 'nt':
         raise DomainError('office_windows_required')
+    if body.get('operation')=='render_word':return render_word(store,job_id,body)
     job, presentation, manifest, operation = scope(store, job_id, body)
     scripts = app_dir(store.project) / 'scripts/native-office'
     script = scripts / ('run_office_pipeline.ps1' if operation == 'equations' else 'audit_powerpoint_native.ps1')

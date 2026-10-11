@@ -858,9 +858,11 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
             if not item:raise DomainError('invalid_paper_graph')
             file=contained(store.project,path)
             if not file.is_relative_to(contained(store.project,job['context']['output_dir'])) or digest(file)!=item.get('sha256'):raise DomainError('artifact_hash_mismatch')
-            from .research_enrich import artifact as enrich_graph
+            from .research_enrich import artifact as enrich_graph,enrichment_artifacts
+            generated=enrichment_artifacts(store,job,manifest,file)
             await enrich_graph(store,job,write,budget=40,path=file,broker=institutional_broker)
-            item['sha256']=digest(file)
+            for generated_item in generated:
+                generated_item['sha256']=digest(contained(store.project,generated_item['path']))
             atomic_json(file.parent/'result.json',manifest)
         result=await write('ingest:' + id, body, lambda: codex.ingest_result(id,body,request))
         await codex.accepted(id)

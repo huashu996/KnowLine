@@ -1,6 +1,4 @@
 """Research execution policy, shared by the dispatcher and persistent worker."""
-UNLIMITED_TASKS = {'discover_papers', 'paper_relationships', 'import_graph_papers',
-                   'build_knowledge', 'update_knowledge'}
 PUBLIC_PROVIDERS = ['Crossref', 'Semantic Scholar']
 
 
@@ -30,11 +28,10 @@ def acquisition_limits(job):
 
 
 def total_budget(job):
-    # Also applies to retries of old tasks, whose frozen context may still say 300.
-    if job['task'] in UNLIMITED_TASKS:
-        return None
-    seconds = job['context'].get('literature_search', {}).get('time_budget_seconds', 600)
-    return None if seconds is None else min(600, seconds)
+    # All tasks run until completion or cancellation, including retries whose
+    # immutable context still carries a legacy time budget. Individual I/O
+    # timeouts and lease/connection checks remain independent of this policy.
+    return None
 
 
 def public_fallback_allowed(job):

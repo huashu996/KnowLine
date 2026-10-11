@@ -64,8 +64,8 @@ def run():
     task=tasks.add_parser('create');task.add_argument('--domain',required=True);task.add_argument('--question',required=True);task.add_argument('--task',default='read_resources');task.add_argument('--type',choices=['all','paper','code'],default='all')
     office=subs.add_parser('office').add_subparsers(dest='action',required=True)
     native=office.add_parser('native');native.add_argument('id')
-    native.add_argument('--operation',choices=['equations','audit'],required=True)
-    native.add_argument('--presentation',required=True);native.add_argument('--manifest',required=True)
+    native.add_argument('--operation',choices=['equations','audit','render_word'],required=True)
+    native.add_argument('--presentation',required=True);native.add_argument('--manifest')
     for action in ['prepare','build','revise','finish']:
         o=office.add_parser(action);o.add_argument('id')
         if action in {'build','revise'}:o.add_argument('--content',required=True)

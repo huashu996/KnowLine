@@ -156,6 +156,10 @@ def paper_request(body, config,public_copy=False):
 
 
 def normalize(value):
+    from html import unescape
+    # Registry titles can contain inline HTML/XML formatting, for example
+    # R<sup>3</sup>LIVE. Markup is presentation, not part of paper identity.
+    value=unescape(re.sub(r'</?(?:sup|sub|i|b|em|strong|span|italic|bold)(?:\s[^>]*)?>','',value,flags=re.I))
     return re.sub(r'[^\w]', '', unicodedata.normalize('NFKC',value).casefold())
 
 
@@ -182,8 +186,29 @@ def rss_pdf_url(doi):
     return 'https://www.roboticsproceedings.org/rss'+str(volume).zfill(2)+'/p'+str(int(match[3])).zfill(2)+'.pdf'
 
 
+def normalized_pdf_identity(target):
+    """Fill omitted fields from the citation without trusting a source's expected_* hints."""
+    if not isinstance(target,dict) or not isinstance(target.get('doi'),str):
+        raise DomainError('institution_identity_required')
+    supplied=target.get('pdf_identity')
+    if supplied is not None and not isinstance(supplied,dict):
+        raise DomainError('institution_identity_required')
+    identity=dict(supplied) if supplied else dict(target)
+    for key in ('doi','title','authors'):
+        if key not in identity:identity[key]=target.get(key)
+    if (not isinstance(identity.get('title'),str) or not normalize(identity['title']) or
+            not isinstance(identity.get('authors'),list) or not identity['authors'] or
+            any(not isinstance(a,str) or not a.strip() for a in identity['authors']) or
+            identity.get('doi') is not None and not isinstance(identity['doi'],str) or
+            identity.get('arxiv_id') is not None and not isinstance(identity['arxiv_id'],str) or
+            not (identity.get('doi') or target['doi'] or identity.get('arxiv_id'))):
+        raise DomainError('institution_identity_required')
+    return identity
+
+
 def validate_pdf(path, target):
     from .pdf import open_pdf
+    identity=normalized_pdf_identity(target)
     path = Path(path)
     if not path.is_file() or not 5 < path.stat().st_size <= MAX_PDF:
         raise DomainError('pdf_invalid')
@@ -197,7 +222,6 @@ def validate_pdf(path, target):
         text = '\n'.join(document[i].get_text() for i in range(inspected))
     # Conservative: scanned or abbreviated-title PDFs require existing manual review/import.
     found = set(v.rstrip('.,;)') for v in re.findall(r'10\.\d{4,9}/[^\s<>"\]]+', text.lower()))
-    identity=target.get('pdf_identity') or target
     actual_doi=str(identity.get('doi') or target['doi']).lower()
     doi_match = actual_doi in found
     arxiv_id=str(identity.get('arxiv_id') or '')

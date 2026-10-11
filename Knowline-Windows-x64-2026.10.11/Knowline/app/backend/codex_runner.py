@@ -91,6 +91,11 @@ def instructions(store, job, automatic=False):
                  'proposal_word/proposal_ppt/replicate_paper_figure 及截图复制到 PowerPoint 必须渲染最终保存文件、查看每页预览，'
                  '将 PNG 预览加入 artifacts，并写 layout_review={review_status:passed或passed_with_notes,preview_paths:[项目相对PNG路径],notes:[实际检查结果]}。'
                  '版面仍有溢出、碰撞、空公式或裁切时修正后重验，不得声称预览已通过。\n')
+    if job['task']=='proposal_word':
+        text+=('Word 最终渲染优先运行 app/kw.cmd office native '+job['id']+' --operation render_word --presentation <context.proposal.target_path>。'
+               '该入口只读打开本任务的目标DOCX，由桌面服务原生导出并返回逐页PNG路径与SHA256，避免在智能体沙箱直接启动Word。'
+               '返回预览后仍须实际查看全部页面，加入artifacts并记录真实layout_review；渲染成功不代表视觉审核通过。'
+               '重试先检查同一output_dir已有成果，复用合格文件并补充缺项，不创建重复任务。\n')
     if job['task'] in {'discover_papers','paper_relationships','import_graph_papers'}:
         from .research_query import names, public_response_name
         search_scope=job['context'].get('literature_search',{})
@@ -236,29 +241,17 @@ def instructions(store, job, automatic=False):
                  '成功项有 title、resource_id、version_id、sha256，未获取项有 title 和具体 unavailable_reason。'
                  '下载失败立即记缺项并继续下一项，不等凑齐；部分导入用 status=completed、partial=true。\n')
     if automatic:
-        budget = total_budget(job)
-        if budget:
-            deadline = datetime.now(timezone.utc) + timedelta(seconds=max(1,budget-15))
-            selection = job['context'].get('office_selection', {})
-            image_office = job['task']=='copy_office_selection' and selection.get('selection_mode')=='image_region'
-            if image_office or job['task']=='replicate_paper_figure':
-                stage_instruction = ('前 120 秒内将阶段进度写入 stage-result.json，后续更新该阶段文件；'
-                                     '阶段记录不是完成清单，不得写入 result.json 或触发成果回流。')
-                if image_office and selection.get('target')=='word':
-                    stage_instruction += ('result.json 仅在原生构建、预览与审查完成后，'
-                                          '由 app/kw.cmd office finish --manifest-only 生成；'
-                                          '保留最终成果的防覆盖保护，不以删除已提交清单绕过校验。')
-                else:
-                    stage_instruction += 'result.json 仅在最终产物、真实哈希及布局审查齐备后生成。'
-            else:
-                stage_instruction = '前 120 秒内先写一份可校验的阶段 result.json；后续补充核实产物时更新哈希。'
-            text += (f'本轮结果定稿截止时间（UTC）：{deadline.isoformat()}。读取技能后立即用本地时钟设置截止时间；'
-                     '优先用批量公开 API 与并行的有界请求保存原始响应，避免连续重复阅读长页面。'
-                     + stage_instruction +
-                     f'检索截至 {max(0,budget-60)} 秒，最后 60 秒只定稿与自检，不启动新检索。'
-                     '次数核验失败允许 null，有证据的少量结果及时回流，不必凑满目标数量。\n')
-        elif job['task'] in {'discover_papers','paper_relationships','import_graph_papers'}:
-            text += '本任务没有总执行时限或检索截止时间。单次网络请求仍至多10秒、同一失败来源不重试，数量和来源范围保持冻结；及时保存阶段成果，完成核验后回流，用户可取消。\n'
+        text += ('本任务没有总执行时限或定稿截止时间，持续执行至完成或用户取消。'
+                 '旧 context 或 stage-result.json 中的 time_budget_seconds、deadline_utc 不再限制本轮执行。'
+                 '及时保存阶段进度至 stage-result.json；阶段记录不是完成清单。'
+                 '重试时先核对已有文件、result.previous.json 和原生审查，复用正确成果，仅补齐缺项。'
+                 'result.json 仅在最终产物、真实哈希及所需审查齐备后生成。\n')
+        selection = job['context'].get('office_selection', {})
+        if job['task']=='copy_office_selection' and selection.get('selection_mode')=='image_region' and selection.get('target')=='word':
+            text += ('原生构建、预览与审查完成后由 app/kw.cmd office finish --manifest-only 生成 result.json；'
+                     '保留最终成果的防覆盖保护，不以删除已提交清单绕过校验。\n')
+        if job['task'] in {'discover_papers','paper_relationships','import_graph_papers'}:
+            text += '单次网络请求和失败来源仍遵守各自的超时与重试规则，数量和来源范围保持冻结；完成核验后回流。\n'
         python = Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe'
         text += (f'Python 的可信绝对路径是 {python}；在 PowerShell 用 & \'{python}\' -X utf8 执行项目内脚本。'
                  'Windows 沙箱子 shell 可能重建 PATH；不要探查用户目录或反复尝试 python/py 命令。'
@@ -449,7 +442,7 @@ class CodexRunner:
                 from .research_prepare import prepare
                 info['preparation']=await asyncio.to_thread(prepare,self.store,job)
                 info['stages']['memory_seconds']=info['preparation'].get('duration_seconds')
-                if job['task']=='paper_relationships' and (output/'paper-graph.json').is_file():
+                if job['task']=='paper_relationships' and not info['preparation'].get('retry_graph') and (output/'paper-graph.json').is_file():
                     await self.transition(id,'running')
                     from .citation_audit import run as audit_citations
                     audit_started=time.monotonic()
@@ -498,7 +491,14 @@ class CodexRunner:
                 from .research_query import names, public_response_name
                 scope=job['context']['literature_search']
                 existing_discovery=output/names(scope)['scholar']
-                if job['task']=='discover_papers' and existing_discovery.is_file():
+                retry_graph=info.get('preparation',{}).get('retry_graph')
+                if retry_graph:
+                    info['discovery']={'status':'candidates_found','provider':'Saved task graph',
+                        'candidate_count':retry_graph['node_count'],'duration_seconds':0,
+                        'request_sent':False,'reused_original_discovery':True,
+                        'graph_path':retry_graph['path'],'graph_sha256':retry_graph['sha256'],
+                        'warnings':['复用本任务哈希一致的关系图草稿，未发起新发现请求；原来源日期和失败记录保留，仍须核验全部成果后入库。']}
+                elif job['task']=='discover_papers' and existing_discovery.is_file():
                     prior=json.loads(existing_discovery.read_text('utf-8'))
                     info['discovery']={k:v for k,v in prior.items() if k!='papers'}|{'candidate_count':len(prior.get('papers',[])),'reused_original_discovery':True}
                     from .research_policy import public_fallback_allowed

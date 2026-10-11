@@ -136,7 +136,7 @@ def run(args):
             job_heartbeat()
             output=contained(project,job['context']['output_dir']);result_file=output/'result.json'
             # A stale manifest from a prior attempt must never be accepted as a new execution.
-            if result_file.exists():result_file.replace(output/'previous-result.json')
+            if result_file.exists():result_file.replace(output/'result.previous.json')
             budget=total_budget(job)
             timeout=None if budget is None else delivery.get('timeout_seconds') or budget
             job_command=list(command)
@@ -146,11 +146,25 @@ def run(args):
                 if network:job_command[-1:-1]=['-c','web_search="live"']
             execute(job_command,delivery['prompt'],project,output/'agent-prompt.txt',result_file,job_heartbeat,timeout)
             job_heartbeat()
+            if not result_file.is_file():raise DomainError('agent_result_missing',409)
             body['manifest']=json.loads(result_file.read_text('utf-8'))
             request('/jobs/'+job['id']+'/ingest',body,True)
         except Exception as exc:
             # Cancellation/stale leases affect only this child, never its siblings.
-            try:request('/jobs/'+job['id']+'/fail',{**body,'reason':'智能体执行或成果校验失败：'+getattr(exc,'code',type(exc).__name__)},True)
+            reason='智能体执行或成果校验失败：'+getattr(exc,'code',type(exc).__name__)
+            if getattr(exc,'code',None)=='agent_result_missing':
+                reason='智能体未生成最终成果清单，任务尚未通过核验。'
+                try:
+                    stage=output/'stage-result.json'
+                    if stage.is_file() and stage.stat().st_size<=256000:
+                        progress=json.loads(stage.read_text('utf-8-sig'))
+                        if progress.get('job_id')==job['id']:
+                            import re
+                            codes=[b.get('code','') for b in progress.get('blockers',[]) if isinstance(b,dict)]
+                            codes=[c for c in codes if isinstance(c,str) and re.fullmatch(r'[a-z][a-z0-9_]{0,79}',c)]
+                            if codes:reason+=' 阶段核验原因：'+', '.join(dict.fromkeys(codes))[:500]
+                except (OSError,ValueError,TypeError):pass
+            try:request('/jobs/'+job['id']+'/fail',{**body,'reason':reason},True)
             except DomainError as failure:
                 if failure.code not in {'agent_lease_invalid','agent_disconnected','job_not_found'}:
                     # An unreportable execution must not leave a live, leased job

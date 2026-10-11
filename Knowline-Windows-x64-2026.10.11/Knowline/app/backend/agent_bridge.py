@@ -113,7 +113,7 @@ class AgentBridge:
         try:binding=json.loads(self.binding.read_text('utf-8')) if bound else {}
         except (OSError,ValueError):binding={}
         state = 'connected' if live else 'disconnected' if self.selected or bound else 'not_connected'
-        return {'state':state,'available':live,'bound':bound,'binding_id':binding.get('generation'),'session_id':self.selected['id'] if live else None,'name':self.selected['name'] if self.selected else binding.get('name'),
+        return {'state':state,'available':live,'bound':bound,'execution_timeout_seconds':None,'execution_policy':'until_complete_or_cancelled','binding_id':binding.get('generation'),'session_id':self.selected['id'] if live else None,'name':self.selected['name'] if self.selected else binding.get('name'),
                 'message':{'connected':'本地智能体已连接，可执行任务；成果通过校验后回流。',
                            'disconnected':'绑定的本地智能体暂时离线，正在等待自动恢复；任务不会切换到其他执行器。',
                            'not_connected':'尚未连接本地智能体。请在本地 AI 项目中要求“将本地智能体连接到知序”。'}[state]}

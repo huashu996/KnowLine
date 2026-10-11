@@ -107,6 +107,21 @@ async def enrich(store,nodes,write,domain=None,budget=45,formal=False,audit=None
     return result,{'duration_seconds':round(time.monotonic()-start,3),'verified':sum(bool(n.get('citation_record_id')) for n in result),'total':len(nodes),'new_model_execution':False}
 
 
+def enrichment_artifacts(store,job,manifest,graph_path):
+    """Check submitted hashes before updating only this service's generated files."""
+    from .safety import DomainError,digest
+    output=contained(store.project,job['context']['output_dir'])
+    managed={graph_path,output/'graph-fulltext-progress.json',output/'publication-prefetch.json'}
+    generated=[]
+    for item in manifest.get('artifacts',[]):
+        file=contained(store.project,item['path'])
+        if not file.is_relative_to(output):raise DomainError('path_outside_scope')
+        if not file.is_file() or file.stat().st_size>32*1024*1024 or digest(file)!=item.get('sha256'):
+            raise DomainError('artifact_hash_mismatch')
+        if file in managed:generated.append(item)
+    return generated
+
+
 async def artifact(store,job,write,budget=45,path=None,broker=None):
     """Enrich only this task's graph and recalculate its manifest hash."""
     from .safety import atomic_json
