@@ -1,0 +1,9 @@
+Wheel-Version: 1.0
+Generator: setuptools (84.0.0)
+Root-Is-Purelib: true
+Tag: cp311-none-any
+Tag: cp312-none-any
+Tag: cp313-none-any
+Tag: cp314-none-any
+Tag: cp315-none-any
+

@@ -1,0 +1,1043 @@
+[
+  {
+    "name": "@napi-rs/canvas",
+    "version": "0.1.100",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@napi-rs__canvas/LICENSE"
+    ]
+  },
+  {
+    "name": "@napi-rs/canvas-win32-x64-msvc",
+    "version": "0.1.100",
+    "license": "MIT",
+    "texts": []
+  },
+  {
+    "name": "@types/debug",
+    "version": "4.1.13",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__debug/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/estree",
+    "version": "1.0.9",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__estree/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/estree-jsx",
+    "version": "1.0.5",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__estree-jsx/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/hast",
+    "version": "3.0.5",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__hast/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/katex",
+    "version": "0.16.8",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__katex/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/mdast",
+    "version": "4.0.4",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__mdast/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/ms",
+    "version": "2.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__ms/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/react",
+    "version": "19.2.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__react/LICENSE"
+    ]
+  },
+  {
+    "name": "@types/unist",
+    "version": "3.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__unist/LICENSE"
+    ]
+  },
+  {
+    "name": "@ungap/structured-clone",
+    "version": "1.4.0",
+    "license": "ISC",
+    "texts": [
+      "licenses/frontend/@ungap__structured-clone/LICENSE"
+    ]
+  },
+  {
+    "name": "bail",
+    "version": "2.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/bail/license"
+    ]
+  },
+  {
+    "name": "ccount",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/ccount/license"
+    ]
+  },
+  {
+    "name": "character-entities",
+    "version": "2.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/character-entities/license"
+    ]
+  },
+  {
+    "name": "character-entities-html4",
+    "version": "2.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/character-entities-html4/license"
+    ]
+  },
+  {
+    "name": "character-entities-legacy",
+    "version": "3.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/character-entities-legacy/license"
+    ]
+  },
+  {
+    "name": "character-reference-invalid",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/character-reference-invalid/license"
+    ]
+  },
+  {
+    "name": "comma-separated-tokens",
+    "version": "2.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/comma-separated-tokens/license"
+    ]
+  },
+  {
+    "name": "commander",
+    "version": "15.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/commander/LICENSE"
+    ]
+  },
+  {
+    "name": "csstype",
+    "version": "3.2.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/csstype/LICENSE"
+    ]
+  },
+  {
+    "name": "debug",
+    "version": "4.4.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/debug/LICENSE"
+    ]
+  },
+  {
+    "name": "decode-named-character-reference",
+    "version": "1.3.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/decode-named-character-reference/license"
+    ]
+  },
+  {
+    "name": "dequal",
+    "version": "2.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/dequal/license"
+    ]
+  },
+  {
+    "name": "devlop",
+    "version": "1.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/devlop/license"
+    ]
+  },
+  {
+    "name": "entities",
+    "version": "6.0.1",
+    "license": "BSD-2-Clause",
+    "texts": [
+      "licenses/frontend/entities/LICENSE"
+    ]
+  },
+  {
+    "name": "estree-util-is-identifier-name",
+    "version": "3.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/estree-util-is-identifier-name/license"
+    ]
+  },
+  {
+    "name": "extend",
+    "version": "3.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/extend/LICENSE"
+    ]
+  },
+  {
+    "name": "hast-util-from-dom",
+    "version": "5.0.1",
+    "license": "ISC",
+    "texts": [
+      "licenses/frontend/hast-util-from-dom/license"
+    ]
+  },
+  {
+    "name": "hast-util-from-html",
+    "version": "2.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-from-html/license"
+    ]
+  },
+  {
+    "name": "hast-util-from-html-isomorphic",
+    "version": "2.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-from-html-isomorphic/license"
+    ]
+  },
+  {
+    "name": "hast-util-from-parse5",
+    "version": "8.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-from-parse5/license"
+    ]
+  },
+  {
+    "name": "hast-util-is-element",
+    "version": "3.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-is-element/license"
+    ]
+  },
+  {
+    "name": "hast-util-parse-selector",
+    "version": "4.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-parse-selector/license"
+    ]
+  },
+  {
+    "name": "hast-util-to-jsx-runtime",
+    "version": "2.3.6",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-to-jsx-runtime/license"
+    ]
+  },
+  {
+    "name": "hast-util-to-text",
+    "version": "4.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-to-text/license"
+    ]
+  },
+  {
+    "name": "hast-util-whitespace",
+    "version": "3.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hast-util-whitespace/license"
+    ]
+  },
+  {
+    "name": "hastscript",
+    "version": "9.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/hastscript/license"
+    ]
+  },
+  {
+    "name": "html-url-attributes",
+    "version": "3.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/html-url-attributes/license"
+    ]
+  },
+  {
+    "name": "inline-style-parser",
+    "version": "0.2.7",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/inline-style-parser/LICENSE"
+    ]
+  },
+  {
+    "name": "is-alphabetical",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/is-alphabetical/license"
+    ]
+  },
+  {
+    "name": "is-alphanumerical",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/is-alphanumerical/license"
+    ]
+  },
+  {
+    "name": "is-decimal",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/is-decimal/license"
+    ]
+  },
+  {
+    "name": "is-hexadecimal",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/is-hexadecimal/license"
+    ]
+  },
+  {
+    "name": "is-plain-obj",
+    "version": "4.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/is-plain-obj/license"
+    ]
+  },
+  {
+    "name": "katex",
+    "version": "0.19.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/katex/LICENSE"
+    ]
+  },
+  {
+    "name": "longest-streak",
+    "version": "3.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/longest-streak/license"
+    ]
+  },
+  {
+    "name": "lucide-react",
+    "version": "0.468.0",
+    "license": "ISC",
+    "texts": [
+      "licenses/frontend/lucide-react/LICENSE"
+    ]
+  },
+  {
+    "name": "mdast-util-from-markdown",
+    "version": "2.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-from-markdown/license"
+    ]
+  },
+  {
+    "name": "mdast-util-math",
+    "version": "3.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-math/license"
+    ]
+  },
+  {
+    "name": "mdast-util-mdx-expression",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-mdx-expression/license"
+    ]
+  },
+  {
+    "name": "mdast-util-mdx-jsx",
+    "version": "3.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-mdx-jsx/license"
+    ]
+  },
+  {
+    "name": "mdast-util-mdxjs-esm",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-mdxjs-esm/license"
+    ]
+  },
+  {
+    "name": "mdast-util-phrasing",
+    "version": "4.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-phrasing/license"
+    ]
+  },
+  {
+    "name": "mdast-util-to-hast",
+    "version": "13.2.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-to-hast/license"
+    ]
+  },
+  {
+    "name": "mdast-util-to-markdown",
+    "version": "2.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-to-markdown/license"
+    ]
+  },
+  {
+    "name": "mdast-util-to-string",
+    "version": "4.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/mdast-util-to-string/license"
+    ]
+  },
+  {
+    "name": "micromark",
+    "version": "4.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark/license"
+    ]
+  },
+  {
+    "name": "micromark-core-commonmark",
+    "version": "2.0.4",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-core-commonmark/license"
+    ]
+  },
+  {
+    "name": "micromark-extension-math",
+    "version": "3.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-extension-math/license"
+    ]
+  },
+  {
+    "name": "commander",
+    "version": "8.3.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/commander/LICENSE"
+    ]
+  },
+  {
+    "name": "katex",
+    "version": "0.16.47",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/katex/LICENSE"
+    ]
+  },
+  {
+    "name": "micromark-factory-destination",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-factory-destination/license"
+    ]
+  },
+  {
+    "name": "micromark-factory-label",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-factory-label/license"
+    ]
+  },
+  {
+    "name": "micromark-factory-space",
+    "version": "2.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-factory-space/license"
+    ]
+  },
+  {
+    "name": "micromark-factory-title",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-factory-title/license"
+    ]
+  },
+  {
+    "name": "micromark-factory-whitespace",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-factory-whitespace/license"
+    ]
+  },
+  {
+    "name": "micromark-util-character",
+    "version": "2.1.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-character/license"
+    ]
+  },
+  {
+    "name": "micromark-util-chunked",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-chunked/license"
+    ]
+  },
+  {
+    "name": "micromark-util-classify-character",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-classify-character/license"
+    ]
+  },
+  {
+    "name": "micromark-util-combine-extensions",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-combine-extensions/license"
+    ]
+  },
+  {
+    "name": "micromark-util-decode-numeric-character-reference",
+    "version": "2.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-decode-numeric-character-reference/license"
+    ]
+  },
+  {
+    "name": "micromark-util-decode-string",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-decode-string/license"
+    ]
+  },
+  {
+    "name": "micromark-util-edit-map",
+    "version": "1.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-edit-map/license"
+    ]
+  },
+  {
+    "name": "micromark-util-encode",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-encode/license"
+    ]
+  },
+  {
+    "name": "micromark-util-html-tag-name",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-html-tag-name/license"
+    ]
+  },
+  {
+    "name": "micromark-util-normalize-identifier",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-normalize-identifier/license"
+    ]
+  },
+  {
+    "name": "micromark-util-resolve-all",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-resolve-all/license"
+    ]
+  },
+  {
+    "name": "micromark-util-sanitize-uri",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-sanitize-uri/license"
+    ]
+  },
+  {
+    "name": "micromark-util-subtokenize",
+    "version": "2.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-subtokenize/license"
+    ]
+  },
+  {
+    "name": "micromark-util-symbol",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-symbol/license"
+    ]
+  },
+  {
+    "name": "micromark-util-types",
+    "version": "2.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/micromark-util-types/license"
+    ]
+  },
+  {
+    "name": "ms",
+    "version": "2.1.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/ms/license.md"
+    ]
+  },
+  {
+    "name": "parse-entities",
+    "version": "4.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/parse-entities/license"
+    ]
+  },
+  {
+    "name": "@types/unist",
+    "version": "2.0.11",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/@types__unist/LICENSE"
+    ]
+  },
+  {
+    "name": "parse5",
+    "version": "7.3.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/parse5/LICENSE"
+    ]
+  },
+  {
+    "name": "pdfjs-dist",
+    "version": "5.4.296",
+    "license": "Apache-2.0",
+    "texts": [
+      "licenses/frontend/pdfjs-dist/LICENSE"
+    ]
+  },
+  {
+    "name": "property-information",
+    "version": "7.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/property-information/license"
+    ]
+  },
+  {
+    "name": "react",
+    "version": "19.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/react/LICENSE"
+    ]
+  },
+  {
+    "name": "react-dom",
+    "version": "19.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/react-dom/LICENSE"
+    ]
+  },
+  {
+    "name": "react-markdown",
+    "version": "10.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/react-markdown/license"
+    ]
+  },
+  {
+    "name": "rehype-katex",
+    "version": "7.0.1",
+    "license": "MIT",
+    "texts": []
+  },
+  {
+    "name": "commander",
+    "version": "8.3.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/commander/LICENSE"
+    ]
+  },
+  {
+    "name": "katex",
+    "version": "0.16.47",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/katex/LICENSE"
+    ]
+  },
+  {
+    "name": "remark-math",
+    "version": "6.0.0",
+    "license": "MIT",
+    "texts": []
+  },
+  {
+    "name": "remark-parse",
+    "version": "11.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/remark-parse/license"
+    ]
+  },
+  {
+    "name": "remark-rehype",
+    "version": "11.1.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/remark-rehype/license"
+    ]
+  },
+  {
+    "name": "scheduler",
+    "version": "0.27.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/scheduler/LICENSE"
+    ]
+  },
+  {
+    "name": "space-separated-tokens",
+    "version": "2.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/space-separated-tokens/license"
+    ]
+  },
+  {
+    "name": "stringify-entities",
+    "version": "4.0.4",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/stringify-entities/license"
+    ]
+  },
+  {
+    "name": "style-to-js",
+    "version": "1.1.21",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/style-to-js/LICENSE"
+    ]
+  },
+  {
+    "name": "style-to-object",
+    "version": "1.0.14",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/style-to-object/LICENSE"
+    ]
+  },
+  {
+    "name": "three",
+    "version": "0.180.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/three/LICENSE"
+    ]
+  },
+  {
+    "name": "trim-lines",
+    "version": "3.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/trim-lines/license"
+    ]
+  },
+  {
+    "name": "trough",
+    "version": "2.2.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/trough/license"
+    ]
+  },
+  {
+    "name": "unified",
+    "version": "11.0.5",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unified/license"
+    ]
+  },
+  {
+    "name": "unist-util-find-after",
+    "version": "5.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-find-after/license"
+    ]
+  },
+  {
+    "name": "unist-util-is",
+    "version": "6.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-is/license"
+    ]
+  },
+  {
+    "name": "unist-util-position",
+    "version": "5.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-position/license"
+    ]
+  },
+  {
+    "name": "unist-util-remove-position",
+    "version": "5.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-remove-position/license"
+    ]
+  },
+  {
+    "name": "unist-util-stringify-position",
+    "version": "4.0.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-stringify-position/license"
+    ]
+  },
+  {
+    "name": "unist-util-visit",
+    "version": "5.1.0",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-visit/license"
+    ]
+  },
+  {
+    "name": "unist-util-visit-parents",
+    "version": "6.0.2",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/unist-util-visit-parents/license"
+    ]
+  },
+  {
+    "name": "vfile",
+    "version": "6.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/vfile/license"
+    ]
+  },
+  {
+    "name": "vfile-location",
+    "version": "5.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/vfile-location/license"
+    ]
+  },
+  {
+    "name": "vfile-message",
+    "version": "4.0.3",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/vfile-message/license"
+    ]
+  },
+  {
+    "name": "web-namespaces",
+    "version": "2.0.1",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/web-namespaces/license"
+    ]
+  },
+  {
+    "name": "zwitch",
+    "version": "2.0.4",
+    "license": "MIT",
+    "texts": [
+      "licenses/frontend/zwitch/license"
+    ]
+  },
+  {
+    "name": "click",
+    "version": "8.5.0",
+    "license": "BSD-3-Clause",
+    "metadata": "Knowline/_internal/click-8.5.0.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/click-8.5.0.dist-info/licenses/LICENSE.txt"
+    ]
+  },
+  {
+    "name": "clr_loader",
+    "version": "0.3.1",
+    "license": null,
+    "metadata": "Knowline/_internal/clr_loader-0.3.1.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/clr_loader-0.3.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "cryptography",
+    "version": "50.0.1",
+    "license": "Apache-2.0 OR BSD-3-Clause",
+    "metadata": "Knowline/_internal/cryptography-50.0.1.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/cryptography-50.0.1.dist-info/licenses/LICENSE",
+      "Knowline/_internal/cryptography-50.0.1.dist-info/licenses/LICENSE.APACHE",
+      "Knowline/_internal/cryptography-50.0.1.dist-info/licenses/LICENSE.BSD"
+    ]
+  },
+  {
+    "name": "numpy",
+    "version": "2.5.3",
+    "license": "BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0",
+    "metadata": "Knowline/_internal/numpy-2.5.3.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/LICENSE.txt",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/ma/LICENSE",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/fft/pocketfft/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/linalg/lapack_lite/LICENSE.txt",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/distributions/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/philox/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/sfc64/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/_core/src/highway/LICENSE",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/_core/src/common/pythoncapi-compat/COPYING",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/_core/src/npysort/x86-simd-sort/LICENSE.md",
+      "Knowline/_internal/numpy-2.5.3.dist-info/licenses/numpy/_core/src/umath/svml/LICENSE"
+    ]
+  },
+  {
+    "name": "opentelemetry-api",
+    "version": "1.45.0",
+    "license": "Apache-2.0",
+    "metadata": "Knowline/_internal/opentelemetry_api-1.45.0.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/opentelemetry_api-1.45.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pydantic",
+    "version": "2.13.5",
+    "license": "MIT",
+    "metadata": "Knowline/_internal/pydantic-2.13.5.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/pydantic-2.13.5.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pythonnet",
+    "version": "3.2.0",
+    "license": "MIT",
+    "metadata": "Knowline/_internal/pythonnet-3.2.0.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/pythonnet-3.2.0.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "pywebview",
+    "version": "6.2.1",
+    "license": "BSD 3-Clause License\n        \n        Copyright (c) 2014-2017, Roman Sirokov\n        All rights reserved.\n        \n        Redistribution and use in source and binary forms, with or without\n        modification, are permitted provided that the following conditions are met:\n        \n        * Redistributions of source code must retain the above copyright notice, this\n          list of conditions and the following disclaimer.\n        \n        * Redistributions in binary form must reproduce the above copyright notice,\n          this list of conditions and the following disclaimer in the documentation\n          and/or other materials provided with the distribution.\n        \n        * Neither the name of the copyright holder nor the names of its\n          contributors may be used to endorse or promote products derived from\n          this software without specific prior written permission.\n        \n        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\n        AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\n        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n        DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\n        FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\n        DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\n        SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\n        CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\n        OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\n        OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n        ",
+    "metadata": "Knowline/_internal/pywebview-6.2.1.dist-info/METADATA",
+    "texts": [
+      "Knowline/_internal/pywebview-6.2.1.dist-info/licenses/LICENSE"
+    ]
+  },
+  {
+    "name": "onnxruntime",
+    "version": "1.30.0",
+    "license": "MIT License",
+    "metadata": ".semantic-runtime/onnxruntime-1.30.0.dist-info/METADATA",
+    "texts": []
+  },
+  {
+    "name": "tokenizers",
+    "version": "0.23.2",
+    "license": null,
+    "metadata": ".semantic-runtime/tokenizers-0.23.2.dist-info/METADATA",
+    "texts": []
+  }
+]

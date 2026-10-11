@@ -1,0 +1,26 @@
+{
+  "schema_version": 2,
+  "default_port": 21867,
+  "project_root": ".",
+  "local_agent": {
+    "protocol": 1,
+    "documentation": "app/docs/LOCAL_AGENT.md",
+    "cli": "app/kw.cmd agent",
+    "persistent_project_binding": true
+  },
+  "path_mapping": {
+    ".knowledge": "resource/.knowledge",
+    "incoming": "resource/incoming",
+    "outputs": "outputs",
+    "workspace": "resource/workspace",
+    "知识库": "resource/library",
+    "SLAM_RAG_Knowledge_Base": "resource/reference",
+    "research-skills": "app/research-skills",
+    "docs": "app/docs",
+    "adapters": "app/adapters",
+    "backend": "app/backend",
+    "scripts": "app/scripts",
+    "resource/outputs": "outputs"
+  },
+  "installation_id": "4efdaad5-2752-4787-aa0c-c61eb1bf2f98"
+}

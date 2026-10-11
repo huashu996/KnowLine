@@ -1,0 +1,11 @@
+**/resource/.knowledge/
+**/resource/incoming/*
+!**/resource/incoming/.gitkeep
+**/resource/workspace/*
+!**/resource/workspace/.gitkeep
+**/resource/library/
+**/outputs/*
+!**/outputs/.gitkeep
+**/__pycache__/
+*.pyc
+*.pyo
