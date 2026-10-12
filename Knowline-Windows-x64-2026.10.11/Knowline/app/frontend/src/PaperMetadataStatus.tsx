@@ -1,0 +1,8 @@
+export default function PaperMetadataStatus({metadata,locale}:{metadata:Record<string,any>;locale:string}){
+ const en=locale==='en',v=metadata.metadata_verification||{},state=v.state;
+ const labels:Record<string,[string,string]>={verified:['已核实','Verified'],partial:['部分核实','Partially verified'],source_unavailable:['来源暂不可用','Source unavailable'],identity_conflict:['身份不一致','Identity mismatch'],superseded:['版本已变化','Version changed'],needs_review:['待核实','Needs review']};
+ const label=(labels[state]||labels[metadata.metadata_status==='verified'?'verified':metadata.metadata_status==='partially_verified'?'partial':'needs_review'])[en?1:0];
+ const reasons:Record<string,[string,string]>={citation_source_unavailable:['书目来源暂不可用；已保存 PDF','Bibliographic source unavailable; PDF retained'],citation_source_timeout:['书目核验超时，可重新核验','Bibliography lookup timed out; retry verification'],citation_identity_conflict:['PDF 首页身份与来源记录不符','PDF header does not match the source record'],citation_match_not_found:['未找到题名及作者均匹配的来源','No source matched the title and authors'],citation_identifier_required:['未识别到稳定标识或可用题名','No stable identifier or usable title'],locked_field_conflict:['保留人工字段，冲突待核对','Manual fields retained; review conflicts'],missing_fields:['来源缺少字段','Source fields missing']};
+ const detail=[reasons[v.reason]?.[en?1:0],...(v.missing_fields||[]),...(v.conflicting_fields||[]),v.checked_at?new Date(v.checked_at).toLocaleString(en?'en-US':'zh-CN'):null].filter(Boolean).join(' · ');
+ return <span className={'badge status-'+(state==='verified'||(!state&&metadata.metadata_status==='verified')?'confirmed':'needs_review')} title={detail||label}>{label}</span>;
+}

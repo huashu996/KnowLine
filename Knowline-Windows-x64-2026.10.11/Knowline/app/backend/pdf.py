@@ -7,7 +7,7 @@ import pymupdf as fitz
 from .safety import DomainError, hash_bytes, json_text
 
 
-def render_region(path, page_index, rect, geometry_hash, target):
+def render_region(path, page_index, rect, geometry_hash, target, *, detail=False):
     """Crop rendered pixels in displayed-page coordinates, including PDF rotation."""
     if not isinstance(rect,list) or len(rect)!=4 or any(isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v) for v in rect):raise DomainError('invalid_geometry')
     x0,y0,x1,y1=rect
@@ -16,6 +16,17 @@ def render_region(path, page_index, rect, geometry_hash, target):
         if isinstance(page_index,bool) or not isinstance(page_index,int) or not 0<=page_index<len(doc):raise DomainError('invalid_page')
         page=doc[page_index]
         if geometry(page)['hash']!=geometry_hash:raise DomainError('geometry_conflict',409)
+        if detail:
+            # Figure reconstruction needs legible source annotations. Render
+            # only the frozen selection, rather than enlarging a low-DPI crop
+            # or allocating a high-DPI bitmap of the entire paper page.
+            clip=fitz.Rect(page.rect.x0+x0*page.rect.width,page.rect.y0+y0*page.rect.height,
+                           page.rect.x0+x1*page.rect.width,page.rect.y0+y1*page.rect.height)
+            scale=min(12,2048/max(clip.width,clip.height))
+            pix=page.get_pixmap(matrix=fitz.Matrix(scale,scale),clip=clip,colorspace=fitz.csRGB,alpha=False)
+            if pix.width<4 or pix.height<4:raise DomainError('invalid_geometry')
+            pix.save(target)
+            return {'path':str(target),'width':pix.width,'height':pix.height,'sha256':hash_bytes(target.read_bytes())}
         # Bound work for exceptionally large PDF pages; ordinary pages render at 180 DPI.
         scale=min(2.5,2400/max(page.rect.width,page.rect.height))
         pix=page.get_pixmap(matrix=fitz.Matrix(scale,scale),colorspace=fitz.csRGB,alpha=False)

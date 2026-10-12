@@ -1261,7 +1261,7 @@ class Store:
             path=contained(self.project,resources[0]['snapshot_path'])
             info=pdf.page_info(path,selected.get('page_index',-1))
             if selected.get('page_geometry_hash')!=info['geometry']['hash']:raise DomainError('geometry_conflict')
-            image=pdf.render_region(path,selected['page_index'],selected.get('region'),selected['page_geometry_hash'],named('figure-source.png'))
+            image=pdf.render_region(path,selected['page_index'],selected.get('region'),selected['page_geometry_hash'],named('figure-source.png'),detail=True)
             image['path']=Path(image['path']).relative_to(self.project).as_posix()
             page_rect=info['geometry']['rect']
             box=selected['region']

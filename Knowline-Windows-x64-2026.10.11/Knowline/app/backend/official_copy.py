@@ -11,7 +11,8 @@ AUTHOR_HOSTS={'cvg.cit.tum.de','vision.in.tum.de','rpg.ifi.uzh.ch',
               'www.research-collection.ethz.ch','www.ipb.uni-bonn.de',
               'webdiis.unizar.es','doriangalvez.com','jacqueskaiser.com',
               'gisbi-kim.github.io'}
-AUTHOR_REPOS={('RobustFieldAutonomyLab','LeGO-LOAM'),('PRBonn','puma')}
+AUTHOR_REPOS={('RobustFieldAutonomyLab','LeGO-LOAM'),('PRBonn','puma'),
+              ('gaoxiang12','faster-lio'),('hku-mars','Swarm-LIO2'),('hku-mars','r3live')}
 PUBLIC_ALIASES={'http://doriangalvez.com/php/dl.php?dlp=GalvezTRO12.pdf':'http://doriangalvez.com/papers/GalvezTRO12.pdf'}
 
 

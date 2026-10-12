@@ -4,11 +4,50 @@ import os
 import subprocess
 import threading
 from pathlib import Path
+from collections import OrderedDict
 from .safety import DomainError, atomic_json, contained, digest
 from .layout import app_dir
 from .office_clipboard import check
 
 _lock = threading.Lock()
+_draft_hashes=OrderedDict()
+_draft_hash_lock=threading.Lock()
+
+
+def figure_drafts(store,job):
+    """Expose an existing task-owned PPT without accepting its completion claim."""
+    import zipfile
+    if job.get('task')!='replicate_paper_figure' or job.get('status') not in {'failed','interrupted','partial'}:return []
+    try:
+        output=contained(store.project,job['context']['output_dir'])
+        target=contained(store.project,job['context']['figure_selection']['target_pptx'],False)
+        if not target.is_relative_to(output):return []
+        registered={(a['path'],a.get('sha256')) for a in (job.get('result') or {}).get('artifacts',[])}
+        candidates=[target,*output.glob('*.working.pptx')]
+        candidates=sorted(set(candidates),key=lambda p:p.stat().st_mtime_ns if p.is_file() else 0,reverse=True)
+        for candidate in candidates:
+            if candidate.is_symlink() or not candidate.is_file() or not 0<candidate.stat().st_size<=128*1024*1024:continue
+            file=contained(store.project,candidate)
+            if not file.is_relative_to(output) or file.suffix.lower()!='.pptx':continue
+            # Package identification is not an Office/render/layout acceptance.
+            try:
+                with zipfile.ZipFile(file) as package:
+                    if '[Content_Types].xml' not in package.namelist() or 'ppt/presentation.xml' not in package.namelist():continue
+            except (OSError,zipfile.BadZipFile):continue
+            path=file.relative_to(store.project).as_posix();stat=file.stat()
+            key=(str(file),stat.st_size,stat.st_mtime_ns,stat.st_ctime_ns)
+            with _draft_hash_lock:
+                sha=_draft_hashes.get(key)
+                if sha:_draft_hashes.move_to_end(key)
+            if not sha:
+                sha=digest(file)
+                with _draft_hash_lock:
+                    _draft_hashes[key]=sha
+                    while len(_draft_hashes)>32:_draft_hashes.popitem(last=False)
+            if (path,sha) in registered:continue
+            return [{'path':path,'sha256':sha,'bytes':stat.st_size,'validation_status':'not_passed','is_draft':True}]
+    except (DomainError,OSError,KeyError,ValueError):pass
+    return []
 
 
 def word_scope(store,job_id,body):

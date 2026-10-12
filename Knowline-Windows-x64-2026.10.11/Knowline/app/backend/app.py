@@ -869,8 +869,14 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         return result
 
     @app.get('/api/v1/jobs/{id}/artifact')
-    def artifact(id: str, path: str, preview: bool = False):
+    def artifact(id: str, path: str, preview: bool = False, draft: bool = False, sha256: str = ''):
         job = store.job(id)
+        if draft:
+            from .office_native import figure_drafts
+            candidate=next((a for a in figure_drafts(store,job) if a['path']==path),None)
+            if not candidate:raise DomainError('path_outside_scope')
+            if not sha256 or sha256!=candidate['sha256'] or digest(contained(store.project,path))!=sha256:raise DomainError('artifact_hash_mismatch',409)
+            return FileResponse(contained(store.project,path),filename=Path(path).stem+'-未通过验收.pptx')
         if not job['result'] or path not in [a['path'] for a in job['result']['artifacts']]:
             raise DomainError('path_outside_scope')
         file=contained(store.project, path)

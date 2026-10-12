@@ -5,6 +5,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 $expectedPath = [IO.Path]::GetFullPath($PresentationPath)
 $manifestFullPath = [IO.Path]::GetFullPath($ManifestPath)
 $app = $null

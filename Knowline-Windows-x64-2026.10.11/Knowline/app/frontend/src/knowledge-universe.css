@@ -1,0 +1,110 @@
+.network-shell{background:radial-gradient(ellipse at 50% 48%,#30352d 0%,#1c211f 28%,#141817 63%,#101413 100%);border-color:#333d36;min-height:680px;height:calc(100vh - 320px);color:#bbc8bf}
+.network-shell .network-top{padding:20px 24px;background:linear-gradient(#111715da,transparent)}
+.network-shell .network-context{top:65%;left:50%;transform:translateX(-50%);width:25%;max-width:270px;text-align:center;pointer-events:none}
+.network-shell .network-context h3{font-size:20px;font-weight:500;line-height:1.35;margin:8px 0;color:#ecdcba;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.network-shell .network-context p{font-size:12px;color:#aab4a7;margin-top:6px}
+.network-shell[data-clusters="8"] .network-context{width:17%}
+.network-shell[data-clusters="8"] .network-context h3{font-size:16px}
+.network-shell .network-context .eyebrow{font-size:10px;letter-spacing:3px;color:#d0bd91}
+.network-shell .network-source-type{font-size:10px;color:#84988c}
+.network-shell .network-back{pointer-events:auto;margin:10px auto 0;font-size:12px}
+.network-shell .cluster-cards{position:absolute;inset:0;width:auto;display:block;pointer-events:none}
+.network-shell .cluster-card{position:absolute;left:var(--cluster-x);top:calc(var(--cluster-y) + 7%);transform:translateX(-50%);width:180px;max-width:20%;min-height:86px;padding:12px 14px;display:flex;gap:11px;pointer-events:auto;background:linear-gradient(130deg,#303632ed,#1c211feb);border:1px solid #68736770;border-radius:12px;box-shadow:0 8px 25px #0005,inset 0 1px 0 #ffffff0a;backdrop-filter:blur(12px);transition:border-color .18s,box-shadow .18s}
+.network-shell .cluster-card:hover,.network-shell .cluster-card:focus-visible{transform:translateX(-50%);border-color:var(--cluster-color);box-shadow:0 0 25px color-mix(in srgb,var(--cluster-color) 15%,transparent);outline:2px solid var(--cluster-color);outline-offset:3px}
+.network-shell .cluster-card .node-dot{display:none}
+.network-shell .cluster-card>svg{flex-shrink:0;color:var(--cluster-color);opacity:.6}
+.network-shell .cluster-kind{font-size:10px;color:#a9b6ac;letter-spacing:.4px}
+.network-shell .cluster-card strong{font-size:14px;font-weight:550;color:#e7eee8;margin-top:5px}
+.network-shell .cluster-card small{font-size:10px;color:#8e9d93;margin-top:4px}
+.cluster-stat{color:#f4f4eb;font-size:27px;line-height:1;display:block;font-weight:600;margin-bottom:6px;letter-spacing:-1px}
+.network-shell .network-bottom{bottom:57px;left:24px;right:24px;padding-top:14px;border-top:1px solid #a1b5a113}
+.network-shell .network-bottom>span{font-size:10px;color:#91a096}
+.network-shell .network-legend{font-size:10px;color:#9bab9f}
+.network-shell .network-controls label{color:#98a89c;font-size:11px}
+.network-shell .network-controls button{background:#26312b;color:#c2d2c6;border-color:#435749;font-size:11px}
+.network-shell .network-relations{background:#1e2922e8;border-color:#415849}
+@media(max-width:1100px){.network-shell .cluster-card{width:156px;max-width:16%;padding:10px;gap:7px}.network-shell .cluster-card strong{font-size:12px}.network-shell .network-context h3{font-size:17px}}
+@media(max-width:760px){
+ .network-shell{height:auto;min-height:760px;padding-bottom:16px}
+ .network-shell .universe-canvas{height:440px}
+ .network-shell .network-top{align-items:flex-start;flex-wrap:wrap;padding:16px}
+ .network-shell .network-context{top:310px;width:80%;max-width:80%}
+ .network-shell[data-clusters="8"] .network-context{width:80%}
+ .network-shell .network-context h3{font-size:18px}
+ .network-shell .cluster-cards{position:relative;inset:auto;margin:365px 16px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .network-shell .cluster-card{position:relative;left:auto;top:auto;transform:none;width:100%;max-width:none;min-height:100px}
+ .network-shell .cluster-card:hover,.network-shell .cluster-card:focus-visible{transform:none}
+ .network-shell .cluster-card strong{font-size:13px;white-space:normal;overflow-wrap:anywhere}
+ .network-shell .network-bottom{position:relative;inset:auto;margin:20px 16px 12px;flex-direction:column;align-items:flex-start;gap:9px}
+ .network-shell .network-bottom>span{display:block;max-width:100%}
+ .network-shell .network-controls{position:relative;inset:auto;margin:0 16px;flex-wrap:wrap}
+ .network-shell .network-relations{top:90px;left:16px;max-width:80%}
+}
+@media(prefers-reduced-motion:reduce){.network-shell .cluster-card{transition:none}}
+
+/* A quiet deep-space backdrop leaves the illuminated nuclei and paths legible. */
+.network-shell{background:radial-gradient(ellipse at 50% 48%,#232a2b 0%,#131b21 36%,#0b1118 70%,#080d13 100%);border-color:#29353d;isolation:isolate}
+.universe-atmosphere{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 35% 42%,#8670ad0c,transparent 45%),radial-gradient(ellipse at 65% 54%,#64bbb70b,transparent 45%);box-shadow:inset 0 0 100px #0005}
+.network-shell .network-top{background:linear-gradient(#0b1119c9,transparent)}
+.network-view-label{position:absolute;top:64px;left:24px;display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:2px;color:#8296a4;pointer-events:none}
+.network-shell .cluster-card{top:calc(var(--cluster-y) + 3%);background:linear-gradient(130deg,#2b333bce,#151e27cf);border-color:color-mix(in srgb,var(--cluster-color) 22%,transparent);box-shadow:0 8px 28px #0004,inset 0 1px 0 #ffffff08}
+.network-shell .cluster-card strong{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
+.network-shell .network-context .eyebrow{color:#b7a485}
+.network-shell .network-context h3{color:#eddfc5}
+.network-empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#8d9ca8;font-size:12px}
+.network-shell .network-controls button{background:#182530;color:#b9cdd8;border-color:#354856}
+.network-shell.network-tree{background:radial-gradient(ellipse at 18% 48%,#24282c,transparent 42%),radial-gradient(ellipse at 42% 50%,#191e2c,transparent 50%),#090f15}
+.network-shell.network-tree .network-context{top:57%;left:29%;width:19%;max-width:210px;transform:translateX(-50%);padding:14px 10px;background:linear-gradient(130deg,#2a303acc,#141d27c9);border:1px solid color-mix(in srgb,var(--branch-color) 30%,transparent);border-radius:12px}
+.network-shell.network-tree .network-context h3{font-size:16px;color:#edeaf8;margin:5px 0}
+.network-shell.network-tree .network-context p{font-size:11px}
+.network-shell.network-tree .network-context .eyebrow{color:var(--branch-color);font-size:9px;letter-spacing:2px}
+.network-shell.network-tree .tree-scroll{inset:15% 3% 18% 35%;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#46556c55 transparent;pointer-events:auto;mask-image:linear-gradient(transparent,#000 12px,#000 calc(100% - 12px),transparent)}
+.tree-content{position:relative;min-height:100%;width:100%}
+.tree-connections{position:absolute;inset:0;height:100%;width:100%;pointer-events:none;overflow:visible}
+.tree-connections path{stroke-width:1;transition:stroke .2s,filter .2s}
+.tree-connections path.active{stroke-width:1.6;filter:drop-shadow(0 0 4px var(--branch-color))}
+.network-shell.network-tree .tree-node{left:43%;top:var(--cluster-y);width:55%;max-width:none;min-height:45px;padding:7px 10px 7px 18px;transform:translateY(-50%);border-radius:8px;border:1px solid transparent;background:transparent;box-shadow:none;backdrop-filter:none;gap:8px}
+.network-shell.network-tree .tree-node:hover,.network-shell.network-tree .tree-node:focus-visible{transform:translateY(-50%);background:color-mix(in srgb,var(--branch-color) 8%,#121b24);border-color:color-mix(in srgb,var(--branch-color) 30%,transparent);box-shadow:none;outline:1px solid var(--branch-color);outline-offset:-1px}
+.network-shell.network-tree .tree-node .node-dot{display:block;position:absolute;left:-4px;top:calc(50% - 4px);width:8px;height:8px;border-radius:50%;background:#ecedff;box-shadow:0 0 5px 2px var(--branch-color),0 0 17px var(--branch-color)}
+.network-shell.network-tree .tree-node strong{font-size:12px;white-space:nowrap;display:block;text-overflow:ellipsis;margin:0;line-height:1.6;font-weight:500;color:#dce2ec}
+.network-shell.network-tree .tree-node small{color:#8293a5;font-size:10px;margin-top:2px}
+.network-shell.network-tree .tree-node>svg{opacity:0;transition:opacity .2s}
+.network-shell.network-tree .tree-node:hover>svg,.network-shell.network-tree .tree-node:focus-visible>svg{opacity:1}
+.tree-peer-rail{position:absolute;left:2%;top:16%;bottom:20%;width:17%;display:flex;flex-direction:column;justify-content:space-between;gap:10px;pointer-events:none}
+.tree-peer-rail button{display:flex;flex-direction:row-reverse;align-items:center;gap:10px;color:#93a2b4;font-size:11px;width:100%;text-align:right;pointer-events:auto;border-radius:8px;padding:7px;transition:background .2s}
+.tree-peer-rail button:hover,.tree-peer-rail button:focus-visible{background:#ffffff08;color:#e4eaf2}
+.tree-peer-rail button>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-peer-rail small{display:block;color:#596c7e;font-size:9px;margin-top:2px}
+.peer-orb{flex-shrink:0;width:27px;height:27px;border-radius:50%;background:radial-gradient(circle at 40% 40%,var(--cluster-color),#62778866 18%,#15242d44 50%,transparent 70%);box-shadow:0 0 17px color-mix(in srgb,var(--cluster-color) 14%,transparent);border:1px solid color-mix(in srgb,var(--cluster-color) 20%,transparent)}
+.network-shell[data-reduced="true"] *{transition:none!important;animation:none!important}
+@media(min-width:761px) and (max-width:1100px){.network-shell .cluster-card{padding:8px}.cluster-stat{font-size:23px}.tree-peer-rail{left:1%;width:17%}.network-shell.network-tree .network-context{width:20%;left:29%}.network-shell.network-tree .tree-node strong{font-size:11px}}
+@media(max-width:760px){
+ .network-shell .cluster-card{top:auto}
+ .network-shell .cluster-cards{margin-top:390px}
+ .universe-cards{display:contents}
+ .network-view-label{top:70px;left:16px;font-size:9px}
+ .network-shell.network-tree{min-height:680px}
+ .network-shell.network-tree .universe-canvas{height:360px}
+ .network-shell.network-tree .network-context{position:relative;left:auto;top:auto;transform:none;width:auto;max-width:none;margin:210px 16px 0;text-align:left;padding:12px 16px}
+ .network-shell.network-tree .network-context h3{font-size:16px}
+ .network-shell.network-tree .network-context p{display:inline-block;margin-right:10px}
+ .network-shell.network-tree .network-source-type{display:inline-block}
+ .network-shell.network-tree .network-back{margin:8px 0 0}
+ .tree-peer-rail{display:none}
+ .network-shell.network-tree .tree-scroll{position:relative;inset:auto;display:block;margin:16px 16px 0;height:440px;max-height:60vh;width:auto;mask-image:none}
+ .network-shell.network-tree .tree-node{position:absolute;left:24%;width:75%;transform:translateY(-50%);min-height:45px;padding-left:12px}
+ .network-shell.network-tree .tree-node:hover,.network-shell.network-tree .tree-node:focus-visible{transform:translateY(-50%)}
+ .tree-connections{width:56%}
+ .network-shell.network-tree .tree-node strong{font-size:11px}
+ .network-shell.network-tree .network-bottom{margin-top:18px}
+}
+.knowledge-markdown{line-height:1.75;white-space:normal}.knowledge-markdown h2{font-size:15px;margin:20px 0 8px}.knowledge-markdown p{white-space:normal}.knowledge-markdown table{border-collapse:collapse;display:block;overflow:auto}.knowledge-markdown td,.knowledge-markdown th{border:1px solid #d6dfda;padding:6px 10px}.knowledge-markdown .katex-display{overflow:auto;padding:8px 0}.kb-card-container>.kb-card{width:100%}
+
+/* Black sky, compact bright nuclei and readable white/gold connections. */
+.network-shell,.network-shell.network-tree{background:#03060a;border-color:#303842}.network-shell .cluster-card>svg{opacity:1;color:#ffe39b}.network-shell .cluster-card{background:#080d16a6;border-color:#e7cf8b45}.network-shell .cluster-card strong{color:#fff5de}.tree-connections path{stroke:#fff0c8;opacity:.72}.tree-connections path.active{stroke:#ffe18d}.network-shell.network-tree .tree-node .node-dot{width:6px;height:6px;background:#fff8de;box-shadow:0 0 3px #ffe09c}.paper-network .paper-node-label text{fill:#fff3da;font-size:10.5px;paint-order:stroke;stroke:#020407;stroke-width:3px;stroke-linejoin:round}.paper-network .paper-node-core{filter:none!important}.paper-network .paper-graph-node.is-origin .paper-node-core{filter:drop-shadow(0 0 1px #fff8d0)!important}.paper-network .paper-node-label rect{display:none}.paper-network .paper-edge.is-muted{opacity:1}
+.network-shell,.network-shell.network-tree{background:#000}.network-shell .universe-atmosphere{display:none}
+/* Later knowledge layers are readable trees, distinct from the brain overview. */
+.network-tree-links{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:1}
+.network-tree-links path{stroke-width:1;transition:stroke .2s,opacity .2s}
+.network-tree-links path.active{stroke:#fff4c9;stroke-width:1.6;filter:drop-shadow(0 0 2px var(--branch-color))}
+.network-shell.network-tree .network-context,.network-shell.network-tree .tree-scroll{z-index:2}

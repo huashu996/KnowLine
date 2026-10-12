@@ -32,6 +32,8 @@ def norm(value):
     # repository record (Gomez/Gómez, Tardos/Tardós). Keep every author and
     # stable identifier check; only canonical diacritic differences collapse.
     import unicodedata
+    from html import unescape
+    value=unescape(re.sub(r'<[^>]+>','',str(value)))
     return normalize(''.join(c for c in unicodedata.normalize('NFKD', value) if not unicodedata.combining(c)))
 def same_identity(a,b):
     # A title alone is never sufficient. Stable identifiers/author evidence are independent.

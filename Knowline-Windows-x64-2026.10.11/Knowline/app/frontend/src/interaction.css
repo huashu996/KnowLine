@@ -1,0 +1,8 @@
+:root{--kw-focus:#315fba;--kw-control-radius:8px;--kw-dialog-gap:16px}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--kw-focus);outline-offset:3px}
+.modal{max-height:calc(100dvh - 32px);overflow:auto;max-width:calc(100vw - 32px)}
+.modal h2{overflow-wrap:anywhere}.modal-actions{flex-wrap:wrap;gap:8px}
+.modal[aria-busy=true]{cursor:progress}.modal input,.modal select,.modal textarea{max-width:100%;min-width:0}
+.task-technical pre{white-space:pre-wrap;overflow-wrap:anywhere}
+.import-picker label,.settings-section label{overflow-wrap:anywhere}
+@media(max-width:700px){.batch-actions{flex-wrap:wrap;position:sticky;bottom:0}.heading-actions{flex-wrap:wrap}.modal-backdrop{padding:16px}.sidebar.dashboard-sidebar:not(.mobile-open){transform:translateX(-100%)!important;pointer-events:none}.main-shell{margin-left:0!important;min-width:0}.dashboard-dock{left:50%;max-width:calc(100% - 24px);overflow-x:auto}.page-content{min-width:0}}

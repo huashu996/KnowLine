@@ -13,9 +13,13 @@ description: 从知序任务冻结的论文页或图表，忠实复刻成逐对�
 
 参考图本身作为骨架。可读文字、框体、节点、连接器和箭头分别为原生可编辑对象；复杂照片、实验图按主体裁剪为独立图片；独立图标按现有规则复刻。不得整图插入或用全页截图冒充可编辑。保留每个对象的内容、形状、颜色、拓扑和相对比例，建立对象/文字/连接器账本。连接器使用真实锚点与单个原生对象。
 
+标签互相遮挡或在面板边缘截断时，先检查冻结 PDF 同一选区的原始嵌入图像及真实分辨率，不能只按缩小预览判定不可读。逐层登记可读字符、底色、遮挡顺序和裁切边界；能从源图辨认的字符仍用独立原生文本，原生色块/遮挡层复现原重叠与裁切。禁止因标签不完整就把整条可读文字降为截图。隐藏的字词或置信度不得补猜；确实不可辨认的片段单独记录，仍无法满足已冻结的完整可编辑目标时保持部分完成，不用修改完成记录或降低校验门槛消除缺项。
+
 只控制任务 output_dir 内明确创建的 PPTX 及其独立 PowerPoint 会话，不读取、修改或关闭用户其他演示文稿。需要公式时沿用该 skill 的原生公式流水线。输出后原生打开、回读对象/非空公式及渲染对比；一次合并审查，必要集中修正一次，再定向复核，真实报告残留问题。
 
 PPTX 与验证产物写入任务 output_dir，result.json schema_version=2 含准确哈希及冻结论文版本、页码、图题原文证据。由 智能体 自行 jobs ingest 回流。创建此任务记录不等于已复刻或已执行。
+
+开始原生对象构建后及时保存任务目录内的有效 `.working.pptx`，每个实际构建阶段结束更新同一工作副本。后续原生打开、渲染、证据或结果清单校验失败时保留已生成的 PPTX；不得因验收失败删除文件，也不得用空白或无关的 PPT 冒充复刻成果。平台将提供“下载 PPT（未通过验收）”，任务仍保留真实的未完成状态与原因。全部验收通过后再发布冻结的最终目标。
 
 ## PDF 截图任务的实操契约
 
@@ -40,6 +44,8 @@ pdftotext、OCR、排序后的文本和人工补空格只能辅助理解，不�
 先在唯一工作副本 `context.figure_selection.target_pptx` 同目录的 `reconstructed-figure.working.pptx` 完成所有对象。需要 Office 公式时，沿用 paper-fig-skill 的 LaTeX 转 Office manifest 流水线；`font_policy=preserve_source_first` 时记录并保持实际源字号，其他模式按冻结字号范围；`target.type=powerpoint_shape`、`slide_index=1`，目标占位框真实存在。执行 `app/kw.cmd office native <本任务ID> --operation equations --presentation <项目相对工作PPTX> --manifest <项目相对Office公式JSON>`。服务只允许该任务工作副本，不调用任意外部文件或用户其他演示文稿。
 
 审计 manifest 必须包含所有对象账本、实际普通文字、`formula_objects:[{name,kind:"office"}]`、`expected_formula_count`、`delivery_gate:true`、`require_full_registry:true`、`expected_axis_constraint_count` 和适用的轴约束；只把文字和公式分别统计，不遗漏或虚报检查。执行 `app/kw.cmd office native <本任务ID> --operation audit --presentation <项目相对工作PPTX> --manifest <项目相对原生审计JSON>`；读取返回的实际 `audit_path` 和 `preview_path`，查看最终 PNG 执行合并审查。服务报错时读取真实审计日志，不重试未修改输入，不把结构合法当成视觉通过。
+
+审计预览的 `render_width` 和 `render_height` 各为 320–4096 像素；横版可用 3840×2160，禁止提交超范围的 8K 渲染请求。源图物理尺寸较小时，另外查看原生 PNG 的图体局部，逐字符检查仍以冻结高清选区和原始嵌入图为依据。
 
 交付锁通过后才将工作副本写回冻结目标，再对精确最终路径执行一次 `--operation audit`，使用返回的 `native-final-review/slide-1.png`、真实审计和对象计数完成 `figure_replica`、`layout_review` 与产物 SHA。公式、PNG 或审查缺失不能提交为完成，也不能通过 partial 绕过检查。重试先复用已存在且来源与对象核对通过的素材及工作副本，补齐缺失原生步骤，不重复裁剪同一截图或重画正确对象。
 

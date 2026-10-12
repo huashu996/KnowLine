@@ -70,7 +70,18 @@ async def acquire_node(store,job,node,write,broker,domain=None,active_check=None
             return current
         resource=await guarded_write('graph_pdf_reuse',{'operation_id':uid('op')},reuse)
         return {'resource_id':resource['id'],'version_id':resource['version_id'],'sha256':resource['sha256'],'duplicate':True,'new_download':False,'metadata_status':record.get('metadata_status') if record else 'needs_review','duration_seconds':round(time.monotonic()-start,3)}
-    if not record:return {'unavailable_reason':node.get('metadata_refresh_reason','current_publication_not_verified'),'metadata_status':'needs_review'}
+    if not record:
+        # Queueing and acquisition can outlast the five-minute freshness window.
+        # Refresh the exact identity here; expiry is not evidence of no full text.
+        try:
+            record=await asyncio.wait_for(bibliography.resolve(node.get('doi'),node.get('arxiv_id')),25)
+            original=str(node.get('doi') or '').lower()
+            if original and not original.startswith('10.48550/arxiv.') and 'doi:'+original not in {record['identity_key'],*record.get('related_identifiers',[])}:
+                raise DomainError('citation_identity_conflict')
+            active()
+            record=await guarded_write('graph_pdf_publication_refresh',{'operation_id':uid('op')},lambda:bibliography.save(store,record,domain))
+        except (DomainError,OSError,ValueError,asyncio.TimeoutError) as exc:
+            return {'unavailable_reason':source_failure(exc,'current_publication_refresh_timeout'),'metadata_status':'needs_review','duration_seconds':round(time.monotonic()-start,3)}
     async def try_sources(sources):
         for source in sources:
             active()

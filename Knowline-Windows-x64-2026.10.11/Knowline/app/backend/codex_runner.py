@@ -279,6 +279,8 @@ class CodexRunner:
 
     def job(self, id):
         job = self.store.job(id)
+        from .office_native import figure_drafts
+        job['draft_artifacts']=figure_drafts(self.store,job)
         if job['task']=='verify_paper_metadata':
             from .metadata_results import summary as metadata_summary
             job['metadata_summary']=metadata_summary(self.store,job)

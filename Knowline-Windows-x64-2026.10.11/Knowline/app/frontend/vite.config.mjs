@@ -1,0 +1,5 @@
+import {readFileSync} from 'node:fs';import {fileURLToPath,pathToFileURL} from 'node:url';import path from 'node:path';
+const app=path.dirname(fileURLToPath(import.meta.url)),build=path.resolve(process.env.KNOWLINE_BUILD_ROOT||path.join(app,'../../../.build-work'));
+const {defineConfig}=await import(pathToFileURL(path.join(build,'node_modules/vite/dist/node/index.js')).href);
+const dependencies=Object.keys(JSON.parse(readFileSync(path.join(app,'package.json'),'utf8')).dependencies);
+export default defineConfig({root:app,publicDir:path.join(app,'public'),esbuild:{jsx:'automatic',jsxImportSource:'react'},preview:{proxy:{'/api':'http://127.0.0.1:21867'}},resolve:{alias:dependencies.map(name=>({find:new RegExp('^'+name+'(?=/|$)'),replacement:path.join(build,'node_modules',name).replaceAll('\\','/')}))},build:{target:'es2022',outDir:path.join(build,'ui-dist'),emptyOutDir:true,assetsInlineLimit:0,rollupOptions:{output:{manualChunks:{pdf:['pdfjs-dist'],graph:['three'],react:['react','react-dom']}}}}});

@@ -4,6 +4,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+$OutputEncoding = [Console]::OutputEncoding
 $output = [IO.Path]::GetFullPath($OutputPath)
 if (-not (Test-Path -LiteralPath $output)) { throw "Office target does not exist: $output" }
 if ([IO.Path]::GetExtension($output).ToLowerInvariant() -ne '.pptx') {

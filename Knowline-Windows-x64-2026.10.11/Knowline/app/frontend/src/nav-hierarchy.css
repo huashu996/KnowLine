@@ -1,0 +1,19 @@
+.dashboard-sidebar .nav-section-toggle>svg:first-child{box-sizing:content-box;width:18px;height:18px;padding:8px;border-radius:10px;stroke-width:2;background:#eaf3ee;color:#457c61;box-shadow:inset 0 0 0 1px #dbe9df;flex-shrink:0}
+.dashboard-sidebar .nav-section[data-section=domains] .nav-section-toggle>svg:first-child{background:#e9ecfa;color:#5c65ab;box-shadow:inset 0 0 0 1px #d7def5}
+.dashboard-sidebar .nav-section[data-section=knowledge] .nav-section-toggle>svg:first-child{background:#f6ecdf;color:#a16b35;box-shadow:inset 0 0 0 1px #ecdcc8}
+.dashboard-sidebar .nav-section[data-section=discovery] .nav-section-toggle>svg:first-child{background:#e4f4f4;color:#277f89;box-shadow:inset 0 0 0 1px #cde8e9}
+.dashboard-sidebar .nav-section[data-section=tasks] .nav-section-toggle>svg:first-child{background:#f0eafa;color:#825da2;box-shadow:inset 0 0 0 1px #e5d9f1}
+.dashboard-sidebar .nav-section[data-current=true] .nav-section-toggle>svg:first-child{filter:saturate(1.25);box-shadow:0 3px 10px #294c4130,inset 0 0 0 1px currentColor}
+.dashboard-sidebar .nav-section[data-section=domains] .nav-submenu-items:before{left:2px;background:linear-gradient(#a9b2e4,#dce8e1);width:2px}
+.dashboard-sidebar .nav-domain-heading>.nav-child{min-height:43px;font-size:13px;font-weight:650;color:#4e5e83;padding-left:8px}
+.dashboard-sidebar .nav-domain-heading>.nav-child>svg{box-sizing:content-box;width:16px;height:16px;padding:6px;border-radius:9px;background:#eef0fc;color:#6970b1;stroke-width:2.2;flex-shrink:0}
+.dashboard-sidebar .nav-domain-heading>.nav-child[data-nav-current=true]>svg{background:#dfe4fa;color:#4755a1}
+.dashboard-sidebar .nav-domain-types{margin-left:12px;border-left:1px solid #ccd5e5}
+.dashboard-sidebar .nav-domain-types>div{padding-left:10px}
+.dashboard-sidebar .nav-domain-types .nav-child{min-height:35px;font-size:11px;font-weight:500;padding-left:6px;color:#6a7b79}
+.dashboard-sidebar .nav-domain-types .nav-child>svg{box-sizing:content-box;width:14px;height:14px;padding:5px;border-radius:50%;background:#e5f1ec;color:#337e61;stroke-width:2.2;flex-shrink:0}
+.dashboard-sidebar .nav-domain-types .nav-child:nth-child(2)>svg{background:#e8edfb;color:#5270ac}
+.dashboard-sidebar .nav-domain-types .nav-child:nth-child(3)>svg{background:#e8f3f6;color:#4a8699}
+.dashboard-sidebar .nav-domain-types .nav-child[data-nav-current=true]>svg{box-shadow:0 0 0 2px #fff,0 0 0 3px currentColor}
+.dashboard-sidebar .nav-section-toggle{min-height:49px;padding-block:6px}.dashboard-sidebar .nav-section-heading{align-items:center}
+@media(max-width:950px){.dashboard-sidebar .nav-section-toggle>svg:first-child{padding:6px;width:17px;height:17px}.dashboard-sidebar .nav-domain-heading>.nav-child>svg{padding:5px}}

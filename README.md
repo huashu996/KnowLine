@@ -9,6 +9,10 @@
 
 本仓库提供精简运行版。通过 **Code → Download ZIP** 下载并完整解压，进入 `Knowline-Windows-x64-2026.10.11/Knowline`，双击 `StartKnowline.cmd`。需要 Windows x64 与 Microsoft Edge WebView2 Runtime；使用 Office 功能时还需要对应的桌面版 Word / PowerPoint。
 
+2026-10-12 源码同步：上述目录中的 `app/backend`、`app/frontend`、研究技能及脚本已同步本地更新。此次仅发布源码和界面素材，保留 2026.10.11 打包运行程序与已构建界面；直接启动 EXE 不会自动加载全部新源码。用户资料、成果、登录会话、本机配置与开发缓存均未上传。
+
+Source sync (2026-10-12): application sources, frontend assets, research skills and scripts have been updated in the existing directory. The bundled executable and built interface remain the 2026.10.11 release; launching the EXE does not automatically load all source changes. Personal resources, outputs, sessions, local configuration and development caches are excluded.
+
 Download the repository with **Code → Download ZIP**, extract the entire archive, open `Knowline-Windows-x64-2026.10.11/Knowline`, and double-click `StartKnowline.cmd`. Windows x64 and Microsoft Edge WebView2 Runtime are required; Office features require the corresponding desktop Word / PowerPoint installation.
 
 软件内容位于 [`Knowline-Windows-x64-2026.10.11`](Knowline-Windows-x64-2026.10.11)，本 README 位于仓库根目录。发行内容不包含用户资料、任务、机构登录会话或智能体连接配置。

@@ -4,7 +4,6 @@
   "build": "2026.10.11-final",
   "empty_user_state": true,
   "runtime_sha256": "d948abb0774ae2cc933b51b2d0236e5b0f1a8c99bda9cbf3c38637b8146e7b24",
-  "backend_modules_verified": 63,
   "files": [
     {
       "path": "README.md",
@@ -6348,8 +6347,8 @@
     },
     {
       "path": "app/backend/app.py",
-      "bytes": 58881,
-      "sha256": "672e859a762233bd1dedef2fa247725809133a4377a1ca720e1c787e2f5004a2"
+      "bytes": 59413,
+      "sha256": "7c4d6a37fdf127e24c698f5704a1b8a2949fd2b9fe45b040686a3369b95905bf"
     },
     {
       "path": "app/backend/citation_audit.py",
@@ -6373,8 +6372,8 @@
     },
     {
       "path": "app/backend/codex_runner.py",
-      "bytes": 64949,
-      "sha256": "379b59a4db8edb2a562708435041a1e543f4b0a58881d667818359f6668beaf9"
+      "bytes": 65057,
+      "sha256": "73a5c6cfd4c9dd62a7feb17cc3e852ce5842d48bf3ad124c44a75fbd9698235f"
     },
     {
       "path": "app/backend/connected_papers.py",
@@ -6398,8 +6397,8 @@
     },
     {
       "path": "app/backend/graph_fulltext.py",
-      "bytes": 10113,
-      "sha256": "4e57be7e2a4caa57c549e3ac61c37bba93ad75211773ce9ad812dd2a8c8c23d6"
+      "bytes": 10971,
+      "sha256": "07b32c3bc56e56ce54b44bdbeaaa4b3b1a95dd0a71bdd7810a652373243126c9"
     },
     {
       "path": "app/backend/institutional_access.py",
@@ -6483,13 +6482,13 @@
     },
     {
       "path": "app/backend/office_native.py",
-      "bytes": 10675,
-      "sha256": "b66004668902eb2672ac0524ff0aac33cec773937262d19cd638a5bb4f5d65fb"
+      "bytes": 12919,
+      "sha256": "e5337c1a0c78258f3849bd29868dea8aaa2df1e1e7ec25e0361e6a969fba9985"
     },
     {
       "path": "app/backend/official_copy.py",
-      "bytes": 9914,
-      "sha256": "57599de43658ab87d5700b9e9004885ef680d30a7606040cda7da097fb12fcf0"
+      "bytes": 10005,
+      "sha256": "c88c5842759c2e080db2e68c4e497c346f2daabd412dc1ce968e7ff97909fe29"
     },
     {
       "path": "app/backend/output_names.py",
@@ -6508,8 +6507,8 @@
     },
     {
       "path": "app/backend/paper_bibliography.py",
-      "bytes": 21174,
-      "sha256": "fbe26b0e742a6db9d960540234513f67c9c3a6131f845301939e3553f791f4ad"
+      "bytes": 21257,
+      "sha256": "0d6efc260454eaf4daa98cff50ba137c4fb3873f2d33ae28fe8909fdc31dccd3"
     },
     {
       "path": "app/backend/paper_graph.py",
@@ -6523,8 +6522,8 @@
     },
     {
       "path": "app/backend/pdf.py",
-      "bytes": 9539,
-      "sha256": "a1efc1f737c96735c6b3a758608624e653e3fd1caef937b32b8f4f2ce295d1da"
+      "bytes": 10385,
+      "sha256": "cedace1a58d1aae815f7edaeb304373284cf5e940b022eb7700f42a81fc70722"
     },
     {
       "path": "app/backend/project_catalog.py",
@@ -6548,8 +6547,8 @@
     },
     {
       "path": "app/backend/research_download.py",
-      "bytes": 21648,
-      "sha256": "85086b3528dd8248c4a1f2629c34e1943d4b91037a6d066d207d0c0ff5bac956"
+      "bytes": 22842,
+      "sha256": "66d6a3f8db14a1a426f2d2543f804a34558bd9852d14576c3284b6d324225c2a"
     },
     {
       "path": "app/backend/research_enrich.py",
@@ -6633,8 +6632,8 @@
     },
     {
       "path": "app/backend/store.py",
-      "bytes": 115564,
-      "sha256": "ccb5cd51a2f0a02856a2b8fe2956c14877998b13090a1f67523b21197b670332"
+      "bytes": 115575,
+      "sha256": "d4fd022ab27882f1f45815af01d4481fef12eff3a67790f337f903cd2852dcf6"
     },
     {
       "path": "app/backend/word_bridge.py",
@@ -7883,8 +7882,8 @@
     },
     {
       "path": "app/research-skills/knowline-replicate-figure/SKILL.md",
-      "bytes": 11903,
-      "sha256": "88af52e989942a062ceef892aaca73dc9f200eefa73104880db43c67ba93291e"
+      "bytes": 13288,
+      "sha256": "b9ee279fab17fda3fe40dc4684d42e302a2bba1ea6585d0fa3691ee54c7efb35"
     },
     {
       "path": "app/research-skills/knowline-word-citations/SKILL.md",
@@ -7898,8 +7897,8 @@
     },
     {
       "path": "app/scripts/native-office/audit_powerpoint_native.ps1",
-      "bytes": 22291,
-      "sha256": "d53e2855d9e82c414db13816c7f1722d60cef7a7e71437b8f17be0e7d9570272"
+      "bytes": 22407,
+      "sha256": "6d7e523547353e537ca957b4348b6c891638e4ff3aed0c03400d372ae18aa232"
     },
     {
       "path": "app/scripts/native-office/insert_powerpoint_office.ps1",
@@ -7913,8 +7912,8 @@
     },
     {
       "path": "app/scripts/native-office/run_office_pipeline.ps1",
-      "bytes": 534,
-      "sha256": "351efccc90447a2e9fca496d1df5d3e76dbea9108c3fae7954656c51ae67b911"
+      "bytes": 650,
+      "sha256": "3c75b47c0793efbd6d3e69853e1439ef61bfcda2404e3579a2e359bc2aa40ef6"
     },
     {
       "path": "app/scripts/research_fetch_citations.py",
@@ -7945,6 +7944,499 @@
       "path": "app/start-desktop.cmd",
       "bytes": 47,
       "sha256": "533f2e2958e8303c4a68997c94198393a5030bb62f4166b58f5db0f9369afed6"
+    },
+    {
+      "path": "app/frontend/src/api.ts",
+      "bytes": 2954,
+      "sha256": "8d076bbc618d44b9d13fbf34a583312c31f9a891ef1e62bad4ac1162f3326993"
+    },
+    {
+      "path": "app/frontend/src/App.tsx",
+      "bytes": 60952,
+      "sha256": "289439a78aaf0d737cf3b5c95d9ce4be99afa8cf31f73372a73daa96595038b5"
+    },
+    {
+      "path": "app/frontend/src/BuildInfo.tsx",
+      "bytes": 746,
+      "sha256": "5dbf46a6cc67ffbec7dbcf4ff58ad0f52ae39bb6355cbfdb62720ff822cb24c7"
+    },
+    {
+      "path": "app/frontend/src/citation-records.css",
+      "bytes": 813,
+      "sha256": "a4050367f57854876dc8299abc78a5bfce58b84a4ee14656eb2cb6b34f29503f"
+    },
+    {
+      "path": "app/frontend/src/CitationRecords.tsx",
+      "bytes": 5677,
+      "sha256": "5969d853246826540c73b0c03f3adf12c9f99da533041a6e28efb322ddfe8513"
+    },
+    {
+      "path": "app/frontend/src/code-reader.css",
+      "bytes": 1259,
+      "sha256": "d54dba39388bb0e9fe23b08a5f1142e0e87a4973b2955965c29a1bb18444f5ee"
+    },
+    {
+      "path": "app/frontend/src/codeImport.ts",
+      "bytes": 3404,
+      "sha256": "14fe77c7ff5d66a99de3b3152d432ffd37d7a0d9f2544771bb319d754ac019ef"
+    },
+    {
+      "path": "app/frontend/src/CodeReader.tsx",
+      "bytes": 13636,
+      "sha256": "5f832f87051d8fd8e4d01c9e442d68b90177576958c689b186a24eda853f1161"
+    },
+    {
+      "path": "app/frontend/src/CodeSource.tsx",
+      "bytes": 3603,
+      "sha256": "340180c5dd5f4aca0ac1d7b36d61fcc13aeaec54fbad5acd4d6ae2bafa26d61a"
+    },
+    {
+      "path": "app/frontend/src/CodeTree.tsx",
+      "bytes": 2239,
+      "sha256": "f5da9e28e7e741a29baad2e35ebf472ae0c9c05c046e8e6d7d4ed2463d488322"
+    },
+    {
+      "path": "app/frontend/src/compact-tasks.css",
+      "bytes": 4585,
+      "sha256": "05cf58315d3f3ccfe3651fcce89f677453b0a52fa670c8e0df74132f4f069248"
+    },
+    {
+      "path": "app/frontend/src/CompactTaskCard.tsx",
+      "bytes": 7671,
+      "sha256": "3701576082bc5cc9c0ece9a594aa905882aaf7113ec7d839014583457bfc0cd8"
+    },
+    {
+      "path": "app/frontend/src/DashboardNavigation.tsx",
+      "bytes": 12149,
+      "sha256": "09ffa3e06f1bac2f3270db21173f380436fe97c05d8ddca6afb1888137abe9d9"
+    },
+    {
+      "path": "app/frontend/src/design.css",
+      "bytes": 8066,
+      "sha256": "53a90db8a0d52c93753411ce26211c273d6c27d10f089694fc445dd5ce230097"
+    },
+    {
+      "path": "app/frontend/src/DomainPaperTable.tsx",
+      "bytes": 3978,
+      "sha256": "3343e077aff0fb31085f84541f3573bbcd36454f3d4948e47d4b20f7d50fb933"
+    },
+    {
+      "path": "app/frontend/src/DomainSelector.tsx",
+      "bytes": 2486,
+      "sha256": "08f4f2f99f08c4e0a89ad5accd686821a62d7435b272c93d93f54343066edb79"
+    },
+    {
+      "path": "app/frontend/src/GalaxyBackdrop.tsx",
+      "bytes": 519,
+      "sha256": "5afc5bdeeefb65b5274de6a5593f1d305d8007fc1dd903969ea77f12a4a0d569"
+    },
+    {
+      "path": "app/frontend/src/galaxyTexture.ts",
+      "bytes": 3059,
+      "sha256": "d7cc2c06e24ba2728b838ef49b0789b92da2d01b26725ef60714f8b8212ac522"
+    },
+    {
+      "path": "app/frontend/src/i18n.tsx",
+      "bytes": 63451,
+      "sha256": "ca2ca417c6d5fae7fcdd8302dcd8b5ed8373a43526b18543d24bcbcc0cd285cf"
+    },
+    {
+      "path": "app/frontend/src/ImportPicker.tsx",
+      "bytes": 3487,
+      "sha256": "42af5c09f241f2e666bc05e914adcf9110dd15cbc2d6d06c3a5f5c6aa9fe4165"
+    },
+    {
+      "path": "app/frontend/src/institutional-access.css",
+      "bytes": 2206,
+      "sha256": "3b164c9d5c1a6d55dc4e27dd926812116f6f7611ed469b064debf3eb3a5325a9"
+    },
+    {
+      "path": "app/frontend/src/InstitutionalAccess.tsx",
+      "bytes": 14665,
+      "sha256": "47b78c23e921f12997c791e5da5e2b3b0b5bb66c5f110a58a8165cccdbc078b1"
+    },
+    {
+      "path": "app/frontend/src/interaction.css",
+      "bytes": 975,
+      "sha256": "ef648903586f36166c7896431459582a9cc7841e8e68d4cd1301e2f22587b16c"
+    },
+    {
+      "path": "app/frontend/src/job-handoff.css",
+      "bytes": 1753,
+      "sha256": "159bbc7316f11543d3ce594387c87e2e71b4ec0d62e2abcb8e3e4b877f6aa417"
+    },
+    {
+      "path": "app/frontend/src/JobHandoff.tsx",
+      "bytes": 18588,
+      "sha256": "134739d3f227daca8d76b1395bc5221d9cec25fcb43e993d4a47ed95f078a929"
+    },
+    {
+      "path": "app/frontend/src/knowledge-universe.css",
+      "bytes": 13318,
+      "sha256": "c8c8c292427be7b9fb0bd85cc63bab20025f443cbfdef4fa7a14be1302e21f02"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeBuildTiming.tsx",
+      "bytes": 1560,
+      "sha256": "856e82d54ffbab9696457404eb70c4a263b500587e7602dbcb586e0ca0fe0385"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeCards.tsx",
+      "bytes": 3402,
+      "sha256": "d7fb8eab445fb377e9269d9d11e507405b3561e5a5f3422e3963cccc7f5e13c5"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeImport.tsx",
+      "bytes": 2593,
+      "sha256": "84c7ce79b971170904ce44cf309565b6f02b81fd87f308bfabb1fed8001e9076"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeNodeDetail.tsx",
+      "bytes": 2065,
+      "sha256": "49e0af7fcb6d18e6da7e99f51e7ca53c12eafccbb0090c75228ebae4b9999d72"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeStatCards.tsx",
+      "bytes": 484,
+      "sha256": "1999649c60974ede5e9ff4b1907caa006387449eaff37be640c1522ec46e6027"
+    },
+    {
+      "path": "app/frontend/src/KnowledgeUniverse.tsx",
+      "bytes": 10616,
+      "sha256": "217956b2e13b8d992d3b2a190aaf41cd5ae91d8cbb88455a3675fe6c6f003415"
+    },
+    {
+      "path": "app/frontend/src/LazyWorkspaces.tsx",
+      "bytes": 1634,
+      "sha256": "f6aabb1e23405b11351a1bbdbaab40c1a12c53c510bda74e87078630a555fc0c"
+    },
+    {
+      "path": "app/frontend/src/list-performance.css",
+      "bytes": 218,
+      "sha256": "d86c7ffb6c28901a7a2b3128c73afe337eaff5cdb5b68d2f70b2bda33627f29d"
+    },
+    {
+      "path": "app/frontend/src/main.tsx",
+      "bytes": 333,
+      "sha256": "d9304c2da596d265081cae864b214b3365185634f6d8fbb0283b65887b067593"
+    },
+    {
+      "path": "app/frontend/src/Modal.tsx",
+      "bytes": 970,
+      "sha256": "0ade7ade111b32b939ea5c0ba1e4e6b355cb07c911d35cd02cc6c7debc5c5042"
+    },
+    {
+      "path": "app/frontend/src/nav-hierarchy.css",
+      "bytes": 2721,
+      "sha256": "942b387749bb742d99fc9311262ac1a0a2a7c28f7085b4902378111960c6cb6c"
+    },
+    {
+      "path": "app/frontend/src/navigation.css",
+      "bytes": 8296,
+      "sha256": "cdf3da5a1095e3ac1da7a493b3a380d5b7e39aaf4cae59495f7dd7c4dc177a2e"
+    },
+    {
+      "path": "app/frontend/src/nebula-knowledge.css",
+      "bytes": 10341,
+      "sha256": "3faab9ff2f9523f1bb6997b1c2e3515e9c1490b3b5964a57f81659220976a92e"
+    },
+    {
+      "path": "app/frontend/src/nebulaData.ts",
+      "bytes": 3847,
+      "sha256": "d697e4cb9a5a0f671783118d419a1be6dccc5a061451273b377656a02a6ef53b"
+    },
+    {
+      "path": "app/frontend/src/NebulaKnowledgeNetwork.tsx",
+      "bytes": 10148,
+      "sha256": "69ed39c721e76f0311f3610e691da38e6619829cbc4927763fcff07ec2dbf187"
+    },
+    {
+      "path": "app/frontend/src/nebulaLayout.ts",
+      "bytes": 1605,
+      "sha256": "7eb0a929734841c336dd087001b67d1326addfa19932da16e72c7873052d4fd1"
+    },
+    {
+      "path": "app/frontend/src/nebulaMotion.ts",
+      "bytes": 644,
+      "sha256": "32b1e36ae00b5a6afbc4da2569da52a3fd6fb2213ddb7cf22e26c12249fae704"
+    },
+    {
+      "path": "app/frontend/src/NebulaScene.tsx",
+      "bytes": 12830,
+      "sha256": "23030690bd7970543c564307610bdd1ccf8ab6a60a4aecd2ae8265e3d2fdf408"
+    },
+    {
+      "path": "app/frontend/src/network-extra.css",
+      "bytes": 962,
+      "sha256": "8b6a91b4b9837bb2f48e159e38260f4b280603c7c5a66db29480464e2771337f"
+    },
+    {
+      "path": "app/frontend/src/Network.tsx",
+      "bytes": 11985,
+      "sha256": "36d19296ee50d17dcc51933a05ef7259242a27243c47e50f3ce890e1447148cf"
+    },
+    {
+      "path": "app/frontend/src/NeuralReferenceVisual.tsx",
+      "bytes": 3111,
+      "sha256": "eca2140c9e750772614388e9e384b044103afdf1661037d80f7fcd09e15901c3"
+    },
+    {
+      "path": "app/frontend/src/nodeNebula.ts",
+      "bytes": 2815,
+      "sha256": "948dfc4be0af85100337e9e96aba6842cf2d23d35d2df2cfdedf919146e91a4d"
+    },
+    {
+      "path": "app/frontend/src/paper-actions.css",
+      "bytes": 5767,
+      "sha256": "65c61f7196fee44225e5712adfa0bc28d8971ceca29531c2405a132c12f0eea9"
+    },
+    {
+      "path": "app/frontend/src/paper-graph-polish.css",
+      "bytes": 6982,
+      "sha256": "fa940a7fc5b80f796ce2b51e1d0ca40630af8bc8c3e6f93fc6fd468cafce3f7b"
+    },
+    {
+      "path": "app/frontend/src/PaperGraphScene.tsx",
+      "bytes": 17885,
+      "sha256": "3326bf5a615bc99b04655fe5193927f75057f54294e503f75f4009ec6fdba591"
+    },
+    {
+      "path": "app/frontend/src/PaperMetadataStatus.tsx",
+      "bytes": 1875,
+      "sha256": "1a90bd7bec8a7101a7d8acbdda44cb8b044e81d83259be61ef4e271b8c989469"
+    },
+    {
+      "path": "app/frontend/src/PaperRelations.tsx",
+      "bytes": 18618,
+      "sha256": "db17c8bec2b2bb13c31fc9456ca349d92794257e716a977a4a0764d4c71da74e"
+    },
+    {
+      "path": "app/frontend/src/pdf-text.css",
+      "bytes": 3112,
+      "sha256": "f200c088390fcf3fb9608d69602dc8028e24601006349e4777b231aa7d272a92"
+    },
+    {
+      "path": "app/frontend/src/PDFNoteHandles.tsx",
+      "bytes": 3983,
+      "sha256": "a6ad358694389d7d3df7edd86977ba723582957239ba1011c1254fede20c556d"
+    },
+    {
+      "path": "app/frontend/src/PdfProvenance.tsx",
+      "bytes": 2157,
+      "sha256": "6c0cd20a73a53f97ffbaff520ae276761a56f3ef345418305e744e16c525919f"
+    },
+    {
+      "path": "app/frontend/src/PDFRegionCapture.tsx",
+      "bytes": 8221,
+      "sha256": "b30aa2260b83dfbbf4e68c72c3c26ebdf7146074602c71f1df2e851a80387826"
+    },
+    {
+      "path": "app/frontend/src/PdfReplace.tsx",
+      "bytes": 1611,
+      "sha256": "f90428ead3c89464c25fa7ca8bb8dde3ff8922402e086dbb4b5d65dac688639f"
+    },
+    {
+      "path": "app/frontend/src/proposal.css",
+      "bytes": 2805,
+      "sha256": "a9048f47d954ad55bea540a2843ae164b64da930b41396150232397990d9f894"
+    },
+    {
+      "path": "app/frontend/src/ProposalWorkbench.tsx",
+      "bytes": 13642,
+      "sha256": "539e14490ca8e7de6f41a585136827203cbab0fd58ac899ab9b2d726647b1d79"
+    },
+    {
+      "path": "app/frontend/src/Readers.tsx",
+      "bytes": 24436,
+      "sha256": "e89d0cbfd082c1a64c730f1c0f65a07e6e86f3da06f90c60f2a5529803eca483"
+    },
+    {
+      "path": "app/frontend/src/reference-neural/icons.tsx",
+      "bytes": 2287,
+      "sha256": "ff35efeffb33cf48273aa3a3ce3cca8f6473becbc85c713053b58f0c9d822c53"
+    },
+    {
+      "path": "app/frontend/src/reference-neural/scene.css",
+      "bytes": 9855,
+      "sha256": "db7440595137208f14e5ceb6bbc149ab87625948249ec42646b106ae22c1248d"
+    },
+    {
+      "path": "app/frontend/src/reference-neural/Scene.tsx",
+      "bytes": 20594,
+      "sha256": "d5ba565ae5cb929eec7bd5273a18d6d98edabacad2dce58f07d356e563534097"
+    },
+    {
+      "path": "app/frontend/src/reference-neural/theme.ts",
+      "bytes": 2107,
+      "sha256": "75331e91193a44e8d75aba7ffd6ebf1796058c99bc68ff4ecb32a97e0b7148fd"
+    },
+    {
+      "path": "app/frontend/src/refinements.css",
+      "bytes": 9177,
+      "sha256": "563b3f1a879600ae52e48a0ae3a063aadf457619d807399b6b0a5584acb5269c"
+    },
+    {
+      "path": "app/frontend/src/StorageSettings.tsx",
+      "bytes": 5691,
+      "sha256": "e7f1941eb852fd2a30ea4bd12e3472ce5dcfc8bf35b3ba3eb8f1821937451329"
+    },
+    {
+      "path": "app/frontend/src/style.css",
+      "bytes": 39465,
+      "sha256": "97c01dbda5e768bea3667e566ae0f2a8b58a697f5259ab6ae8e47121b13e074a"
+    },
+    {
+      "path": "app/frontend/src/TaskPresentation.tsx",
+      "bytes": 3713,
+      "sha256": "46da50f9a684a0d6dc2fb347c74807dd701bae7bdd51b290c78f23fa85c90924"
+    },
+    {
+      "path": "app/frontend/src/types.ts",
+      "bytes": 1192,
+      "sha256": "0511c759e7fa860a78c88c94d4ac65892aef003874bbac30e8f920aeb7b03365"
+    },
+    {
+      "path": "app/frontend/src/ui-trim.css",
+      "bytes": 1527,
+      "sha256": "2ae1e3e0447f06aec134f8d58b0f9a89a11e87e5eda92e0fd608842ebf5cf78d"
+    },
+    {
+      "path": "app/frontend/src/useCollectionRefresh.ts",
+      "bytes": 1956,
+      "sha256": "e1ae54b704d1bc7991de8c3b8a4be80d3fb04d6bee51756220ea19dc10a07091"
+    },
+    {
+      "path": "app/frontend/src/useDialogAccessibility.ts",
+      "bytes": 3741,
+      "sha256": "c82a527ca4eb89a589cb49f3db00bb813d71c3aa725f8191456f42b60895653a"
+    },
+    {
+      "path": "app/frontend/src/VirtualRows.tsx",
+      "bytes": 2826,
+      "sha256": "c2896a2b52f098ee4dc4b09c8c7809064d0e2f1e999db9e29f08011f21cd17b4"
+    },
+    {
+      "path": "app/frontend/src/vite-env.d.ts",
+      "bytes": 38,
+      "sha256": "65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5"
+    },
+    {
+      "path": "app/frontend/src/word.css",
+      "bytes": 569,
+      "sha256": "e0e08520480ffe2f59b2fc6c6674a2c491fd4cf9e78912a93d7059c43d6278df"
+    },
+    {
+      "path": "app/frontend/src/WordCite.tsx",
+      "bytes": 3892,
+      "sha256": "1af5f6fc3f3c570fe03d64aa9f383c56e3f1f40f896f35f864b8dd91927974ca"
+    },
+    {
+      "path": "app/frontend/src/WordPanel.tsx",
+      "bytes": 5256,
+      "sha256": "da382b0c05a72fac41993d2f1a231b9908fb809fdde1b18e0891984407292497"
+    },
+    {
+      "path": "app/frontend/src/workspace-layout.css",
+      "bytes": 6057,
+      "sha256": "c6780fa707ffeb8c1c9764f18eecea8f59b7aca9d3a405d9e990854c8bad3bee"
+    },
+    {
+      "path": "app/frontend/public/knowline.ico",
+      "bytes": 44990,
+      "sha256": "06f1c37094eeb2e733c65fc271d7c08870138b165c3258182e9c13a70c1b399f"
+    },
+    {
+      "path": "app/frontend/public/knowline.png",
+      "bytes": 23926,
+      "sha256": "f5ad45fc448433f4d1aec67a704d202018f74cd4f9dd5b983899739122808007"
+    },
+    {
+      "path": "app/frontend/public/knowline.svg",
+      "bytes": 686,
+      "sha256": "e6cc5d14c76e4f28e9dbef9b2a563bb921c0ca40dcfc3b858b36c296d9fa6bfb"
+    },
+    {
+      "path": "app/frontend/public/licenses/neural-creator-dashboard.txt",
+      "bytes": 4563,
+      "sha256": "c0ea4a896d2c8c394b29f9427589996db826cd501c512279ff0ed3ef48fabbe5"
+    },
+    {
+      "path": "app/frontend/public/media/neural-creator/jellyfish.jpg",
+      "bytes": 25289,
+      "sha256": "3c4d3751d2cb89ed86355a429b0429ba1e5f160d5090acc4d337d4309688edf3"
+    },
+    {
+      "path": "app/frontend/public/media/neural-creator/jellyfish.mp4",
+      "bytes": 724052,
+      "sha256": "8c6ebbb719c5e6c340b69dc12a7cb775d5c1b6907432049b863d50d301122e47"
+    },
+    {
+      "path": "app/frontend/public/media/neural-creator/orb.jpg",
+      "bytes": 35428,
+      "sha256": "6b4b3aec60c636d5702a80fdf3e4e6816a7f83a22065e5d4b11be478392c3f43"
+    },
+    {
+      "path": "app/frontend/public/media/neural-creator/orb.mp4",
+      "bytes": 8334089,
+      "sha256": "f387a705bed9905ebd622d401239ebb8764be7404080d698e893ffa6e32c087f"
+    },
+    {
+      "path": "app/frontend/public/media/paper-nodes/user-round-nebula-v4-20261006.png",
+      "bytes": 1640459,
+      "sha256": "63f17ae4d7753bc9a90bc37bd79ed92d4eb56bf9c9a120f1fb72df1a3673c731"
+    },
+    {
+      "path": "app/scripts/test_execution_policy.py",
+      "bytes": 2975,
+      "sha256": "7c81054c162078fd56aa88f41b2a7285198bec6c18a5c5f84e076c28b5eeb34c"
+    },
+    {
+      "path": "app/scripts/test_graph_ingest_hashes.py",
+      "bytes": 5364,
+      "sha256": "9f2210661ca35b0526c5df0646906dd911ee958a0a4bb226864336552de70ab8"
+    },
+    {
+      "path": "app/scripts/test_graph_retry.py",
+      "bytes": 3795,
+      "sha256": "09de8aaf7a514cbed88e796898b8509ab1d2187e8cad05a787a2401ae311ff1c"
+    },
+    {
+      "path": "app/scripts/update_frozen_modules.py",
+      "bytes": 4770,
+      "sha256": "25385e45c8c3abffc10f37e69c72132f7733afbcc5ce3b7c4ee2589a5cbca7a7"
+    },
+    {
+      "path": "app/adapters/knowledge-job/SKILL.md",
+      "bytes": 2811,
+      "sha256": "770636fb6c203c1ac12fc8117df80e265c320c82b4fd2b0efd4efe04ab73b90b"
+    },
+    {
+      "path": "app/frontend/package.json",
+      "bytes": 680,
+      "sha256": "a4f618a214b5a0f45c26b66c172099d1310014776db5556d37a870f4c64060ce"
+    },
+    {
+      "path": "app/frontend/package-lock.json",
+      "bytes": 110529,
+      "sha256": "17aafde481a763ed851d1ba69d5b22300cf619eb1e734313eee12516c6a79de2"
+    },
+    {
+      "path": "app/frontend/index.html",
+      "bytes": 321,
+      "sha256": "70013858e04a78d8d8b0285768f6c627059a569f2e67e280cae6c47973e76464"
+    },
+    {
+      "path": "app/frontend/vite.config.mjs",
+      "bytes": 1011,
+      "sha256": "f1ed7af24c9800ce24e7f7e6ec59af80cd4b29bcd2de13d4706edcea4be647a3"
     }
-  ]
+  ],
+  "bundled_backend_modules_verified": 63,
+  "source_snapshot": {
+    "date": "2026-10-12",
+    "base_commit": "a82dace91f8195394cb8a9e1dd670f41f705f49b",
+    "bundled_runtime_rebuilt": false,
+    "bundled_frontend_rebuilt": false,
+    "personal_state_included": false
+  }
 }

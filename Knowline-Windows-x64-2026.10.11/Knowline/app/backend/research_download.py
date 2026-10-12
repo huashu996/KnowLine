@@ -23,8 +23,11 @@ def public_opener(*handlers):
     return urllib.request.build_opener(*handlers,urllib.request.HTTPSHandler(context=context))
 
 
-def permitted_public_host(host,record):
-    from .official_copy import AUTHOR_HOSTS
+def permitted_public_host(host,record,url=None):
+    from .official_copy import AUTHOR_HOSTS,AUTHOR_REPOS
+    if host in {'github.com','raw.githubusercontent.com'}:
+        parts=urllib.parse.urlsplit(url or '').path.strip('/').split('/')
+        return len(parts)>=2 and tuple(parts[:2]) in AUTHOR_REPOS
     formal=urllib.parse.urlsplit((record or {}).get('publisher_url','')).hostname
     bound=any(urllib.parse.urlsplit(b.get('pdf_url','')).hostname==host for b in (record or {}).get('public_copy_bindings',[]))
     return bool(host and (bound or host in {'arxiv.org','export.arxiv.org'}|PUBLIC_REPOSITORIES|AUTHOR_HOSTS or host.endswith('.edu') or re.search(r'\.(?:edu|ac)\.[a-z]{2}$',host) or host in publisher_hosts(formal)))
@@ -52,7 +55,7 @@ async def locate_openalex(record):
     doi=str(data.get('doi') or '').lower().removeprefix('https://doi.org/')
     authors=[a.get('author',{}).get('display_name','') for a in data.get('authorships',[])]
     if doi!=record['doi'].lower() or bibliography.norm(data.get('title',''))!=bibliography.norm(record['title']) or [bibliography.norm(a) for a in authors]!=[bibliography.norm(a) for a in record['authors']]:raise DomainError('public_index_identity_mismatch')
-    sources=[]
+    sources=[];repository_failures=[];repository_source=None;repository_record=None
     for location in data.get('locations',[])[:30]:
         if not isinstance(location,dict) or location.get('is_oa') is not True:continue
         link=location.get('pdf_url') or location.get('landing_page_url')
@@ -64,14 +67,21 @@ async def locate_openalex(record):
             # Verify repository authors, declared DOI and actual version separately.
             found=re.search(r'/(?:abs|pdf)/(\d{4}\.\d{4,5})(?:v\d+)?',link)
             if found:
-                return await locate_public(record,identifier=found[1])
+                try:
+                    repository_record,repository_source=await locate_public(record,identifier=found[1])
+                except (DomainError,OSError,ValueError,asyncio.TimeoutError) as exc:
+                    repository_failures.append(str(getattr(exc,'code','repository_source_unavailable')))
+                # One unavailable repository must not hide the other OA copies.
             continue
-        if not permitted_public_host(host,record):continue
+        if not permitted_public_host(host,record,link):continue
         version={'publishedVersion':'published','acceptedVersion':'accepted_manuscript','submittedVersion':'preprint'}.get(location.get('version'),'unknown')
         sources.append({'publisher_url':record['publisher_url'],'access_url':link,'version_source_url':url,'public_oa':True,'download_permitted':True,'pdf_version':version,'version_basis':'Exact DOI OpenAlex open location: '+str(location.get('version') or 'unknown'),'fallback_reason':'Exact DOI public index located an open copy','pdf_identity':{k:record[k] for k in ('title','authors','doi')}})
-    if not sources:raise DomainError('public_index_no_open_pdf')
+    if repository_source:sources.append(repository_source)
+    if not sources:raise DomainError('public_index_no_open_pdf',502,repository_failures=repository_failures)
     evidence={'provider':'OpenAlex exact DOI','source_url':url,'doi':doi,'title':data['title'],'authors':authors,'retrieved_at':response['retrieved_at'],'response_sha256':response.get('response_sha256')}
-    updated={**record,'evidence':[*record.get('evidence',[]),evidence],'public_download_sources':list({s['access_url']:s for s in [*record.get('public_download_sources',[]),*sources]}.values())[-3:]}
+    base=repository_record or record
+    updated={**base,'evidence':[*base.get('evidence',[]),evidence],'public_download_sources':list({s['access_url']:s for s in [*sources,*base.get('public_download_sources',[])]}.values())[:3]}
+    if repository_failures:updated['public_location_failures']=repository_failures[:3]
     return updated,sources[0]
 
 
@@ -89,8 +99,11 @@ async def locate_index(record):
     link=safe_url(data['openAccessPdf']['url'])
     host=urllib.parse.urlsplit(link).hostname
     # arXiv must supply its original declared publication relationship/version.
-    if host in {'arxiv.org','export.arxiv.org'}:raise DomainError('public_repository_original_record_required')
-    if not permitted_public_host(host,record):raise DomainError('public_pdf_source_outside_policy')
+    if host in {'arxiv.org','export.arxiv.org'}:
+        found=re.search(r'/(?:abs|pdf)/(\d{4}\.\d{4,5})(?:v\d+)?',link)
+        if not found:raise DomainError('public_repository_original_record_required')
+        return await locate_public(record,identifier=found[1])
+    if not permitted_public_host(host,record,link):raise DomainError('public_pdf_source_outside_policy')
     evidence={'provider':'Semantic Scholar exact DOI','source_url':url,'url':link,'title':data['title'],'authors':authors,'doi':identifier,'retrieved_at':response['retrieved_at'],'response_sha256':response.get('response_sha256')}
     source={'publisher_url':record['publisher_url'],'access_url':link,'version_source_url':link,'public_oa':True,'download_permitted':True,'pdf_version':'unknown','version_basis':'Public index locates an open copy; actual file version remains unknown','fallback_reason':'Publisher full text unavailable; exact DOI public index located an open author/repository copy','pdf_identity':{k:record[k] for k in ('title','authors','doi')}}
     return {**record,'evidence':[*record.get('evidence',[]),evidence],'public_download_sources':list({v['access_url']:v for v in [*record.get('public_download_sources',[]),source]}.values())[-3:]},source
@@ -111,7 +124,10 @@ async def locate_public(record,identifier=None):
         # title by recency also hides an older original behind newer extensions.
         # Search the exact title's distinctive prefix plus its first author,
         # then require the declared DOI or full-title/all-author bridge below.
-        title=str(record['title']).split(':',1)[0].replace('"',' ').replace('\\',' ')
+        from html import unescape
+        title=re.sub(r'\s*<(?:sup|sub)>\s*(.*?)\s*</(?:sup|sub)>\s*',r'\1',str(record['title']),flags=re.S)
+        title=unescape(re.sub(r'<[^>]+>','',title)).split(':',1)[0]
+        title=' '.join(title.split()).replace('"',' ').replace('\\',' ')
         author=str(record['authors'][0]).split()[-1].replace('"',' ').replace('\\',' ')
         expression='ti:"'+title+'" AND au:"'+author+'"'
         query='search_query='+urllib.parse.quote(expression,safe='')+'&max_results=5&sortBy=lastUpdatedDate&sortOrder=descending'
@@ -157,7 +173,7 @@ def fetch_pdf(store,node,record,source,seconds):
     access=safe_url(source.get('access_url') or source.get('publisher_url'),public_copy=True)
     publisher=safe_url(source['publisher_url']);host=urllib.parse.urlsplit(access).hostname
     university=bool(host.endswith('.edu') or re.search(r'\.(?:edu|ac)\.[a-z]{2}$',host))
-    if source.get('public_oa') is not True or not permitted_public_host(host,record):raise DomainError('public_pdf_source_outside_policy')
+    if source.get('public_oa') is not True or not permitted_public_host(host,record,access):raise DomainError('public_pdf_source_outside_policy')
     hosts=publisher_hosts(host) if host in publisher_hosts(urllib.parse.urlsplit((record or {}).get('publisher_url','')).hostname) else {host}
     if host in {'arxiv.org','export.arxiv.org'}:
         hosts|={'arxiv.org','export.arxiv.org'}
