@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="Knowline-Windows-x64-2026.10.11/Knowline/app/dist/knowline.svg" width="80" alt="知序 Knowline 标志">
+<img src="app/dist/knowline.svg" width="80" alt="知序 Knowline 标志">
 
 # 知序 · Knowline
 
@@ -14,7 +14,7 @@ A local research workspace for papers, code, knowledge and research outputs.
 
 </div>
 
-![知序资源工作台：统一整理论文、代码、领域与标签](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/images/workspace.png)
+![知序资源工作台：统一整理论文、代码、领域与标签](app/docs/images/workspace.png)
 
 知序面向需要长期积累资料的科研工作：从论文与代码出发，探索文献关系，阅读和标注证据，整理分层知识，再制作方案、公式和可编辑科研图。资源、知识库、任务状态与生成文件保存在本机的同一个项目目录，便于持续使用。
 
@@ -44,7 +44,7 @@ A local research workspace for papers, code, knowledge and research outputs.
 
 ### 2. 论文星图：看见相关论文如何连接
 
-![论文星图：在同一画布查看论文节点与不同类型的关系](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/images/paper-star-map.png)
+![论文星图：在同一画布查看论文节点与不同类型的关系](app/docs/images/paper-star-map.png)
 
 从起点论文探索相关工作，也可以补充自然语言侧重点，例如 **“KISS-ICP，以 TRO、RA-L 为主，关注鲁棒性与实时性”**。查看论文详情、来源、引用信息，再选中候选导入资源库。
 
@@ -69,7 +69,7 @@ A local research workspace for papers, code, knowledge and research outputs.
 
 ### 4. 分层知识库，保留结论背后的依据
 
-![知识卡片：按知识层整理主张、方法机制与原文证据](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/images/knowledge-cards.png)
+![知识卡片：按知识层整理主张、方法机制与原文证据](app/docs/images/knowledge-cards.png)
 
 选择论文与代码，按自己的研究问题定义知识层和侧重点。智能体整理知识卡、方法机制、接口、前提与失败条件，并把主张连接到原文或源码位置。
 
@@ -82,7 +82,7 @@ A local research workspace for papers, code, knowledge and research outputs.
 
 ### 5. 科研方案与任务工作台，持续推进研究
 
-![科研方案工作台：选择来源、输入研究想法并跟进各轮任务](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/images/research-workbench.png)
+![科研方案工作台：选择来源、输入研究想法并跟进各轮任务](app/docs/images/research-workbench.png)
 
 输入研究想法，选择论文、代码、知识库或其组合，生成 **Word 科研方案**。围绕已有成果继续下一轮优化，保留每轮的来源、说明与产物。
 
@@ -95,10 +95,10 @@ A local research workspace for papers, code, knowledge and research outputs.
 
 ## 快速开始
 
-1. **下载并完整解压。** 使用上方“下载空白版”，在解压后的仓库中进入 `Knowline-Windows-x64-2026.10.11/Knowline`；独立发行 ZIP 直接进入 `Knowline` 目录。GitHub 保留原目录名称，内容已更新为当前版本。
+1. **下载并完整解压。** 使用上方“下载空白版”，打开解压后的仓库根目录，即可看到 `app`、`outputs`、`resource`、`README.md` 和 `StartKnowline.cmd`。
 2. **打开知序。** 双击 `StartKnowline.cmd`。请保留 `app` 与启动脚本的相对位置，并放在可写目录。
 3. **导入资料。** 在资源库选择 PDF、代码或文件夹，按需设置领域与标签。
-4. **连接智能体。** 需要分析、建库或生成成果时，在自己的本地 AI 项目中发送：**“将本地智能体连接到知序”**。连接方式见 [本地智能体协议](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/LOCAL_AGENT.md)。
+4. **连接智能体。** 需要分析、建库或生成成果时，在自己的本地 AI 项目中发送：**“将本地智能体连接到知序”**。连接方式见 [本地智能体协议](app/docs/LOCAL_AGENT.md)。
 5. **开始研究。** 打开论文阅读器，探索论文星图，或选择资源创建知识库与科研方案；在智能体任务中查看进度与成果。
 
 默认本地服务地址为 `http://127.0.0.1:21867/`，以本实例配置为准。只启动服务可使用 `app/StartServer.cmd`。
@@ -125,26 +125,29 @@ A local research workspace for papers, code, knowledge and research outputs.
 ```text
 Knowline/
 ├── StartKnowline.cmd       # 桌面启动入口
+├── README.md              # 使用说明
 ├── app/                   # 程序、运行库、CLI、文档与研究技能
-├── resource/              # 首次使用后创建：资料、知识库、索引与任务状态
-└── outputs/               # 首次使用后创建：Word、PPT、报告与预览成果
+├── resource/              # 初始为空，使用后保存资料、知识库、索引与任务状态
+└── outputs/               # 初始为空，使用后保存 Word、PPT、报告与预览成果
 ```
 
 空白发行版只包含软件和说明图片。实际资料与成果由使用者导入和生成。存储工具提供用量统计、缓存预算、安全清理预览与元数据检查点；检查点不是完整资料备份。
+
+GitHub 中的 `resource` 和 `outputs` 仅含用于保留空目录并排除个人数据的 `.gitignore` 文件；运行时生成的内容不随仓库上传。
 
 ## 进一步了解
 
 | 文档 | 内容 |
 | --- | --- |
-| [桌面启动与运行包](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/DESKTOP.md) | 启动入口与运行依赖 |
-| [本地智能体连接](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/LOCAL_AGENT.md) | 执行客户端连接与并行任务 |
-| [代码项目导入](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/CODE_IMPORT.md) | 源文件、目录结构与代码阅读 |
-| [知识卡片与来源](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/KNOWLEDGE_CARDS.md) | 知识整理与来源追溯 |
-| [Word 动态引用](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/WORD_CITATIONS.md) | 引文、参考文献与样式 |
-| [正式书目与 PDF 版本](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/CITATION_PDF_SEPARATION.md) | 出版信息与全文版本分别记录 |
-| [科研方案来源](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/PROPOSAL_SOURCES.md) | 论文、代码与知识库的选择 |
-| [CLI / API 协议](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/PROTOCOL.md) | 命令行与本地接口 |
-| [第三方许可说明](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/THIRD_PARTY_NOTICES.md) | 运行组件与素材说明 |
+| [桌面启动与运行包](app/docs/DESKTOP.md) | 启动入口与运行依赖 |
+| [本地智能体连接](app/docs/LOCAL_AGENT.md) | 执行客户端连接与并行任务 |
+| [代码项目导入](app/docs/CODE_IMPORT.md) | 源文件、目录结构与代码阅读 |
+| [知识卡片与来源](app/docs/KNOWLEDGE_CARDS.md) | 知识整理与来源追溯 |
+| [Word 动态引用](app/docs/WORD_CITATIONS.md) | 引文、参考文献与样式 |
+| [正式书目与 PDF 版本](app/docs/CITATION_PDF_SEPARATION.md) | 出版信息与全文版本分别记录 |
+| [科研方案来源](app/docs/PROPOSAL_SOURCES.md) | 论文、代码与知识库的选择 |
+| [CLI / API 协议](app/docs/PROTOCOL.md) | 命令行与本地接口 |
+| [第三方许可说明](app/docs/THIRD_PARTY_NOTICES.md) | 运行组件与素材说明 |
 
 ## English
 
@@ -155,6 +158,6 @@ Knowline/
 - **Knowledge building:** customizable layers, sourced cards, method details, prerequisites, failure conditions and source-text retrieval.
 - **Research workflow:** locally connected agents, concurrent tasks, iterative Word proposals and dynamic Word citations.
 
-**Getting started:** download and fully extract the ZIP. In the GitHub archive, open `Knowline-Windows-x64-2026.10.11/Knowline`; a standalone distribution ZIP opens directly into `Knowline`. Double-click `StartKnowline.cmd`, import your own resources and connect a reusable local execution client when you need agent tasks. See the [connection guide](Knowline-Windows-x64-2026.10.11/Knowline/app/docs/LOCAL_AGENT.md).
+**Getting started:** download and fully extract the ZIP. The repository root directly contains `app`, `outputs`, `resource`, `README.md` and `StartKnowline.cmd`. Double-click `StartKnowline.cmd`, import your own resources and connect a reusable local execution client when you need agent tasks. The two data folders contain only a `.gitignore` placeholder; your runtime data and outputs stay out of Git. See the [connection guide](app/docs/LOCAL_AGENT.md).
 
 The **2026.10.13 blank edition** contains no research library, knowledge bases, task records, account sessions or agent binding. Screenshots render the current frontend with illustrative data, not actual research results. Windows x64 and WebView2 are required; Office features need desktop Word / PowerPoint. Data is stored locally, while a connected client may use a cloud model. Full-text availability depends on network access and permissions; all-paper PDF coverage and complete citation coverage are not guaranteed.

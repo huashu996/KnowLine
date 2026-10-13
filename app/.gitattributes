@@ -1,0 +1,2 @@
+# Keep packaged file bytes and release hashes identical after checkout.
+* -text

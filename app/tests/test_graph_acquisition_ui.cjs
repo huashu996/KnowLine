@@ -1,0 +1,20 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../dist/assets/PaperRelations-3-vizhM_.js'),'utf8');
+const context={e:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})}};
+vm.createContext(context);vm.runInContext(source.slice(source.indexOf('function kwFullTextState(')),context);
+const missing={title:'Paper & "version"',full_text_reason:'public_index_unavailable; public_repository_no_identity_match'};
+assert.equal(context.kwFullTextState(missing),'search_incomplete');
+const summary=context.kwFullTextSummary({nodes:Array.from({length:9},()=>missing),full_text_summary:{pdf_saved:12,pdf_missing:9,abstracts:12}},true);
+assert.match(summary,/查询未完成 9 篇/);assert.doesNotMatch(summary,/未取得全文|不可获取/);
+const challenge={...missing,publisher_attempt:{reason:'challenge_requires_user'},full_text_candidates:[{url:'https://arxiv.org/abs/2302.04031',title:'FR-LIO'},{url:'javascript:bad',title:'Blocked'}]};
+const rendered=JSON.stringify(context.kwFullTextDetail(challenge,true));
+assert.match(rendered,/机构访问窗口/);assert.match(rendered,/Google 学术/);assert.match(rendered,/候选版本，尚未导入/);assert.doesNotMatch(rendered,/javascript:bad/);
+assert.equal(context.kwFullTextState({...missing,cached_resources:[{resource_id:'r'}]}),'acquired');
+const skipped={...missing,publisher_attempt:{status:'skipped',reason:'challenge_requires_user',request_sent:false},full_text_attempts:[{provider:'Publisher session',status:'skipped',request_sent:false}]};
+const skippedText=JSON.stringify(context.kwFullTextDetail(skipped,true));
+assert.match(skippedText,/直接查公开源/);assert.match(skippedText,/本次未发送请求/);assert.doesNotMatch(skippedText,/完成验证后重试/);
+const links=[];function walk(value){if(!value||typeof value!=='object')return;if(value.type==='a')links.push(value.props.href);Object.values(value).forEach(v=>Array.isArray(v)?v.forEach(walk):walk(v));}
+walk(context.kwFullTextDetail(missing,true));
+const scholar=new URL(links.find(v=>v.startsWith('https://scholar.google.com/')));
+assert.equal(scholar.searchParams.get('q'),'"'+missing.title+'"');
+console.log('UI regression passed: legacy nine failures, publisher challenge, candidate safety, saved PDF, Scholar query.');

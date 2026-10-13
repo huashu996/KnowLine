@@ -1,0 +1,18 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const html=fs.readFileSync(path.join(__dirname,'../dist/index.html'),'utf8');
+const name=html.match(/src="\/assets\/([^"?]+\.js)/)[1];
+const source=fs.readFileSync(path.join(__dirname,'../dist/assets',name),'utf8');
+assert(!source.includes('原始资料和产物文件保留。'));
+assert(source.includes('删除所选任务及其产物文件？'));
+assert(source.includes('删除此任务及其产物文件？'));
+assert(source.includes('Ze?.cleanup_scope==="job_outputs"?kwJobDeletionMessage(Ze.storage_cleanup,r==="zh"):c(S)'));
+assert(!source.includes('仍被其他任务或知识库引用的文件将保留'));
+assert(source.includes('知序内已登记的资源及其原始证据将保留，其余任务文件全部删除'));
+const start=source.indexOf('function kwJobDeletionMessage(');
+const end=source.indexOf('\n}',start)+2;
+const context={};vm.createContext(context);vm.runInContext(source.slice(start,end),context);
+assert.match(context.kwJobDeletionMessage({state:'complete'},true),/产物文件已删除/);
+assert.match(context.kwJobDeletionMessage({state:'pending'},true),/自动重试/);
+assert.match(context.kwJobDeletionMessage({state:'shared_references_retained'},true),/知序内已登记的资源及其原始证据已保留/);
+assert.match(context.kwJobDeletionMessage({state:'pending'},false),/retry automatically/);
+console.log('Task deletion UI passed: both confirmations, cleanup result feedback, retained files and retry.');

@@ -1,0 +1,80 @@
+{
+  "updated_at": "2026-10-11T22:50:06.6887775+08:00",
+  "files": [
+    {
+      "path": "app/backend/graph_fulltext.py",
+      "sha256": "AF61D712EDE0E6169D23B0DCD9C6912B33B4652519D2B7519B85AC1110915203"
+    },
+    {
+      "path": "app/backend/graph_direct_import.py",
+      "sha256": "C07E691EBEAFE553EADDF7000591535D8C5D43036732DCD96D51B6363513F8CB"
+    },
+    {
+      "path": "app/backend/research_import.py",
+      "sha256": "E971BDFC2E232B314F53989601E4623FE51453DF0D160D1C645195A5EFFCDF59"
+    },
+    {
+      "path": "app/backend/research_download.py",
+      "sha256": "C1E4649361455A38131BD1A20BC3DD708447AC4238806FD29FF5C8251423C61A"
+    },
+    {
+      "path": "app/backend/research_enrich.py",
+      "sha256": "46B29D4968D94CC8CF7DC244BD3E244B0548E85DDE59CDDD6EBCBB0BF1F0EDAE"
+    },
+    {
+      "path": "app/backend/research_acquire.py",
+      "sha256": "A2AFFDB9A7DC6F355D29584A92318EAD8760BB0213251035815D04D1B0C1C6E1"
+    },
+    {
+      "path": "app/backend/research_fast.py",
+      "sha256": "0761498A25C8C981FC22B95878E8FC1C9963512EB45D5B5DB26DD59CAF080303"
+    },
+    {
+      "path": "app/backend/institutional_broker.py",
+      "sha256": "25B8ED5470F94C00222BCDBDB1EBDE583FE68BC16D62039A5AAAC5BE0A38049E"
+    },
+    {
+      "path": "app/backend/institutional_browser.py",
+      "sha256": "43D0D89FE8FB72FEE146E0DCA26DE74267F4353D7F929ACCA5CADE5E63F6D9B5"
+    },
+    {
+      "path": "app/backend/official_copy.py",
+      "sha256": "951CA3A3F69AF78889B331F16DE54B52B62DAA52F4DA445242452F3C5AD7C780"
+    },
+    {
+      "path": "app/dist/assets/PaperRelations-3-vizhM_.js",
+      "sha256": "414B364749063AF9F5BEE1F12608B33F93B376ED55E330241FE8BFD077B9B34A"
+    },
+    {
+      "path": "app/research-skills/knowline-paper-relations/SKILL.md",
+      "sha256": "A9632D86896476737599CEC5504D2C460F941AE7AF8B69F480262E4FB50322CD"
+    },
+    {
+      "path": "app/research-skills/knowline-import-papers/SKILL.md",
+      "sha256": "24ADA6D2ECFB850C11D43C1F4AB08100303665A9AD117F8DFCEE5A96AC8EC272"
+    }
+  ],
+  "runtime_sha256": "AF43FCFA133889973B4FD3FAD5D376EA7776AA98E6C1DC288D94E3840095F153",
+  "live_summary": {
+    "pdf_saved": 14,
+    "pdf_missing": 7,
+    "abstracts": 14,
+    "total": 21,
+    "candidate_needs_review": 1,
+    "search_incomplete": 6,
+    "access_restricted": 0,
+    "not_found": 0,
+    "not_checked": 0
+  },
+  "limits": [
+    "Google Scholar links are verification entry points, not claims that checks have run.",
+    "Real IEEE subscription download remains blocked by the existing website challenge.",
+    "Author copies retain unknown file-version labels until independently established."
+  ],
+  "tests": {
+    "timeouts_and_cancellation": 4,
+    "ui": "passed",
+    "source_and_packed": "passed",
+    "acquisition": 25
+  }
+}

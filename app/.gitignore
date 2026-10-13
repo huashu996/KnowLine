@@ -1,0 +1,10 @@
+**/__pycache__/
+*.pyc
+*.pyo
+*.log
+.env
+.env.*
+!.env.example
+/Knowline/Knowline-before-*.exe
+/Knowline/Knowline-retiring.exe
+/Knowline/Knowline-pending.exe
