@@ -3,7 +3,7 @@
   "product": "Knowline",
   "release": "2026.10.13-blank",
   "platform": "Windows x64",
-  "created_at": "2026-10-13T05:48:57.004259+00:00",
+  "created_at": "2026-10-13T07:28:11.998693+00:00",
   "distribution": "empty installation; software only",
   "archive_top_directory": "Knowline",
   "startup_verified": false,
@@ -13,14 +13,14 @@
     "bytes": 15436215,
     "sha256": "b41c13561b8afc220d3c84d065f53d609a632b2c3a465e642e6145f73f694c90"
   },
-  "file_count_excluding_manifest": 1602,
-  "uncompressed_bytes_excluding_manifest": 325430206,
+  "file_count_excluding_manifest": 1606,
+  "uncompressed_bytes_excluding_manifest": 325962115,
   "manifest_self_hash_excluded": true,
   "files": [
     {
       "path": "README.md",
-      "bytes": 17102,
-      "sha256": "31b72f2e9577f6362932b6714011b9e503c4ec1341e67509ca9d4da310ff740e"
+      "bytes": 11671,
+      "sha256": "61fc8cdeceac8b8bc8d8ee778dc6d926185750939624646ca54a0784287c415f"
     },
     {
       "path": "StartKnowline.cmd",
@@ -7216,6 +7216,26 @@
       "path": "app/docs/WORD_CITATIONS.md",
       "bytes": 7432,
       "sha256": "5ff4cbb512e89af6a939e789aeb4a370274b182d6ad7561a7844d885abef4dc2"
+    },
+    {
+      "path": "app/docs/images/knowledge-cards.png",
+      "bytes": 135072,
+      "sha256": "58d80bbcbf213e6e1bbe1f27883c5f97d15b0e9b7fa0a2967b381c71700fb0d9"
+    },
+    {
+      "path": "app/docs/images/paper-star-map.png",
+      "bytes": 129206,
+      "sha256": "a54df0f1c496c77cd67e3a69d8df9e1c11edb9c24f5819b8d224fe90a5a9815e"
+    },
+    {
+      "path": "app/docs/images/research-workbench.png",
+      "bytes": 144271,
+      "sha256": "001e67e168f8203e28cd8a0742842316894195bb2986e0adbce237f1ba9294a2"
+    },
+    {
+      "path": "app/docs/images/workspace.png",
+      "bytes": 128791,
+      "sha256": "e36ac1114c12775f160c13c8f83a3906432107073980de1212f97ddda0302b09"
     },
     {
       "path": "app/kw.cmd",
