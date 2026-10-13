@@ -60,7 +60,11 @@ def related_memory(store,job,output):
             if not score and not any(query==n.get('title','').casefold() or query==n.get('doi','').casefold() for n in graph['nodes']):continue
             sources.append({'job_id':previous['id'],'artifact':path,'sha256':artifact['sha256'],'topic_overlap':score})
             audit_artifact=next((a for a in result.get('artifacts',[]) if Path(a['path']).name=='citation-audit.json'),None)
-            if not reroot and graph.get('network_policy')=='topical-multihop-real-citations-v2':
+            scope=job['context']['literature_search']
+            # A different freeform preference needs candidate selection again;
+            # accepted evidence remains reusable, but cannot silently win over it.
+            preference_review=bool(scope.get('search_instructions') or scope.get('search_plan',{}).get('preferred_venues'))
+            if not reroot and not preference_review and graph.get('network_policy')=='topical-multihop-real-citations-v2':
                 exact=next((n for n in graph['nodes'] if query in {n.get('title','').casefold(),n.get('doi','').casefold(),'https://doi.org/'+n.get('doi','').casefold()}),None)
                 if exact:
                     # Only accepted, source-backed citation neighbours are reused.

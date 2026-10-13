@@ -1,5 +1,5 @@
 """Count actual registered full texts separately from discovered candidates."""
-from .safety import DomainError
+from .safety import DomainError, digest
 
 
 def incomplete(job):
@@ -56,13 +56,28 @@ def validate(store, job, result):
             resource = store.resource(row['resource_id'])
             if resource['metadata'].get('metadata_status')!='verified' or not row.get('citation_record_id') or record.get('metadata_status')!='verified' or not record.get('latest_verified'):
                 raise DomainError('public_citation_verification_required',409)
-            if resource['type'] != 'paper' or resource['state'] != 'ready' or resource['id'] not in domain['resource_ids'] or row.get('version_id') != resource['version_id'] or row.get('sha256') != resource['sha256']:
+            if resource['type'] != 'paper' or resource['state'] != 'ready' or resource['id'] not in domain['resource_ids']:
                 raise DomainError('discovery_import_scope_mismatch')
-            with pdf.open_pdf(store.snapshot(resource)) as document:
+            # A user can annotate a paper while the remaining quota downloads.
+            # The import receipt identifies immutable bytes, not the mutable head.
+            # snapshot() checks that this version belongs to this resource and
+            # that its stored bytes are intact; never replace the receipt with
+            # the current version or silently fall back when it is missing.
+            version = row.get('version_id')
+            if not isinstance(version, str) or not version:
+                raise DomainError('discovery_import_scope_mismatch', reason='import_version_required', resource_id=resource['id'])
+            try:
+                imported_snapshot = store.snapshot(resource, version)
+            except DomainError as exc:
+                if exc.code != 'version_not_found':raise
+                raise DomainError('discovery_import_scope_mismatch', reason='import_version_not_found', resource_id=resource['id']) from None
+            if digest(imported_snapshot) != row.get('sha256'):
+                raise DomainError('discovery_import_scope_mismatch', reason='import_hash_mismatch', resource_id=resource['id'])
+            with pdf.open_pdf(imported_snapshot) as document:
                 if not len(document):raise DomainError('pdf_invalid')
             if row.get('citation_record_id'):
                 from .institutional_access import validate_pdf
-                validate_pdf(store.snapshot(resource),{**record,'citation_record':record,'pdf_version':resource['metadata'].get('pdf_version','unknown'),**({'pdf_identity':resource['metadata']['pdf_identity']} if resource['metadata'].get('pdf_identity') else {})})
+                validate_pdf(imported_snapshot,{**record,'citation_record':record,'pdf_version':resource['metadata'].get('pdf_version','unknown'),**({'pdf_identity':resource['metadata']['pdf_identity']} if resource['metadata'].get('pdf_identity') else {})})
             # Old manifests remain valid; any new version claim must be explicit and sourced.
             if 'pdf_version' in row:
                 from .institutional_access import VERSIONS,safe_url

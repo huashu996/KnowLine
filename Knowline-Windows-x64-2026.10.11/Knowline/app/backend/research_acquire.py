@@ -72,7 +72,7 @@ def plans(candidate,record):
     try:
         from .institutional_access import safe_url
         url=safe_url(url);host=urllib.parse.urlsplit(url).hostname
-        if host not in {'arxiv.org','export.arxiv.org'} and permitted_public_host(host,record):
+        if host not in {'arxiv.org','export.arxiv.org'} and permitted_public_host(host,record,url):
             sources.insert(0,{'publisher_url':record['publisher_url'],'access_url':url,'public_oa':True,'download_permitted':True,'pdf_version':'unknown','version_basis':'Located open source; actual PDF version requires evidence','fallback_reason':'Public full text located independently of institution login','pdf_identity':{k:record[k] for k in ('doi','title','authors')}})
     except DomainError:pass
     from .research_policy import source_priority
@@ -152,23 +152,20 @@ async def run(store,job,write,broker,progress=lambda text:None):
             record=await active_write('discovery_citation',{'operation_id':uid('op')},lambda:bibliography.save(store,record,domain))
             row.update(title=record['title'],doi=record.get('doi'),year=record['year'],venue=record['venue'],citation_record_id=record['id'],identity_key=record['identity_key'],preferred_source_match=preferred_match)
             cached=next((r for r in store.resources() if r['id'] in record.get('resource_ids',[]) and r['metadata'].get('metadata_status')=='verified'),None)
-            if cached:
-                from .institutional_access import validate_pdf
-                validate_pdf(store.snapshot(cached),{**record,'citation_record':record,'pdf_identity':cached['metadata'].get('pdf_identity') or {k:record[k] for k in ('doi','title','authors')}})
-                if cached.get('groups') and domain not in cached['groups']:raise DomainError('candidate_already_used_in_other_domain')
-                def reuse():
-                    resource=bibliography.attach(store,record,cached['id'],cached['metadata'].get('pdf_identity'))
-                    group=next(g for g in store.groups() if g['id']==domain)
-                    if resource['id'] not in group['resource_ids']:store.group_members(domain,{'base_revision':group['revision'],'resource_ids':[*group['resource_ids'],resource['id']]})
-                    return resource
-                resource=await active_write('discovery_reuse',{'operation_id':uid('op')},reuse)
-                acquired={'status':'imported','resource_id':resource['id'],'version_id':resource['version_id'],'sha256':resource['sha256'],'duplicate':True,'new_download':False,'new_registration':False}
-            else:
-                paper={**{k:record.get(k) for k in ('doi','title','authors','year','venue')},'candidate_id':candidate['id'],'citation_record_id':record['id'],'sources':plans(candidate,record)}
-                acquired=await broker.acquire({'job_id':job['id'],'paper':paper,'timeout_seconds':scope.get('source_request_timeout_seconds',10)})
+            if cached and cached.get('groups') and domain not in cached['groups']:raise DomainError('candidate_already_used_in_other_domain')
+            # Search and graph imports share cache preference, publisher
+            # upgrades, public fallback details and the per-paper deadline.
+            from .graph_fulltext import acquire_node,PAPER_ACQUISITION_TIMEOUT_SECONDS
+            node={**record,'id':candidate['id'],'download_sources':plans(candidate,record)}
+            try:
+                async with asyncio.timeout(PAPER_ACQUISITION_TIMEOUT_SECONDS):
+                    acquired=await acquire_node(store,job,node,active_write,broker,domain)
+            except TimeoutError:acquired={'unavailable_reason':'paper_acquisition_timeout'}
             if acquired.get('resource_id'):
                 row.update(acquired);used.add(acquired['resource_id']);identities.add(record['identity_key'])
-            else:row['unavailable_reason']=acquired.get('reason','bounded_public_sources_exhausted')
+            else:
+                row.update(acquired)
+                row['unavailable_reason']=acquired.get('unavailable_reason') or acquired.get('reason','bounded_public_sources_exhausted')
         except (DomainError,ValueError,OSError,KeyError,TypeError) as exc:row['unavailable_reason']=getattr(exc,'code',type(exc).__name__)
         rows.append(row);checkpoint()
     partial=len(used)<limits['target_verified_fulltexts']

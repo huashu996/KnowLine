@@ -8,7 +8,17 @@ from . import paper_bibliography as bibliography
 from .institutional_access import validate_pdf
 
 
+def publisher_source(record):
+    """The formal article route is independent of any ranked OA plans."""
+    return {'publisher_url':record['publisher_url'],'access_url':record['publisher_url'],
+            'pdf_identity':{k:record[k] for k in ('doi','title','authors')},
+            'pdf_version':'unknown','download_permitted':True,
+            'version_basis':'Publisher original page; actual PDF version requires page evidence',
+            'fallback_reason':''}
+
+
 def choices(node,record):
+    from .research_policy import public_source
     # Prefer acquisition plans already reviewed during graph preparation.
     explicit=node.get('download_sources')
     explicit=explicit if isinstance(explicit,list) else []
@@ -16,10 +26,7 @@ def choices(node,record):
     identity={k:record[k] for k in ('doi','title','authors')}
     sources=[]
     if record['publication_status']=='published':
-        sources.append({'publisher_url':record['publisher_url'],'access_url':record['publisher_url'],
-            'pdf_identity':identity,'pdf_version':'unknown','download_permitted':True,
-            'version_basis':'Publisher original page; actual PDF version requires page evidence',
-            'fallback_reason':'Actual PDF version has not yet been identified; formal citation is kept independently'})
+        sources.append(publisher_source(record))
     related=[v[6:] for v in record.get('related_identifiers',[]) if v.startswith('arxiv:')]
     if record.get('arxiv_id'):related.insert(0,record['arxiv_id'])
     for identifier in dict.fromkeys(related):
@@ -35,7 +42,7 @@ def choices(node,record):
     # from the current record instead of retaining an old arXiv version.
     for value in [*explicit,*record.get('public_download_sources',[])]:
         if not isinstance(value,dict) or 'arxiv.org' in str(value.get('access_url','')):continue
-        if value.get('public_oa') is True:
+        if public_source(value,record):
             # Older graph plans store the actual PDF in `url`, not access_url.
             sources.insert(0,{**value,'access_url':value.get('access_url') or value.get('url') or value.get('publisher_url'),
                 'pdf_identity':value.get('pdf_identity') or identity,
@@ -64,7 +71,9 @@ async def run(store,job,write,broker,progress=lambda message:None):
         try:
             if store.job(job['id'])['status'] not in {'running','waiting_user'}:raise asyncio.CancelledError()
             from .graph_fulltext import acquire_node
-            response=await acquire_node(store,job,node,write,broker,domain)
+            from .graph_fulltext import PAPER_ACQUISITION_TIMEOUT_SECONDS
+            async with asyncio.timeout(PAPER_ACQUISITION_TIMEOUT_SECONDS):
+                response=await acquire_node(store,job,node,write,broker,domain)
             row.update(response)
             record=matching(node,bibliography.rows(store),store)
             if record:row['citation_record_id']=record['id']

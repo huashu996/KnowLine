@@ -29,11 +29,15 @@ def math_issues(root):
         if not ''.join(t.text or '' for t in math.iter(M+'t')).strip():problems.append('empty_formula')
         for text in math.iter(M+'t'):
             if re.search(r'[\t\r\n]| {2,}|\u00a0{2,}|\u200b',text.text or ''):problems.append('formula_padding')
-        for kind,names in [('sSub',['e','sub']),('sSup',['e','sup']),('sSubSup',['e','sub','sup']),('sPre',['e','sub','sup']),('f',['num','den']),('rad',['e'])]:
+        for kind,names in [('sSub',['e','sub']),('sSup',['e','sup']),('sSubSup',['e','sub','sup']),('sPre',['e']),('f',['num','den']),('rad',['e'])]:
             for node in math.iter(M+kind):
                 for name in names:
                     part=node.find(M+name)
                     if part is None or not ''.join(t.text or '' for t in part.iter(M+'t')).strip():problems.append('empty_math_argument:'+kind+'/'+name)
+        for node in math.iter(M+'sPre'):
+            parts=[node.find(M+name) for name in ('sub','sup')]
+            if any(part is None for part in parts) or not any(''.join(t.text or '' for t in part.iter(M+'t')).strip() for part in parts if part is not None):
+                problems.append('empty_math_argument:sPre/scripts')
     return problems
 
 def inspect(path,kind):
@@ -84,6 +88,15 @@ def inspect(path,kind):
                 tree=root.find(P+'cSld/'+P+'spTree')
                 if tree is None:problems.append('slide_empty');continue
                 for node in tree:
+                    if node.tag==P+'cxnSp' and node.find(P+'spPr/'+A+'custGeom') is not None:
+                        problems.append('custom_geometry_in_connector')
+                    props=node.find(P+'spPr')
+                    line=props.find(A+'ln') if props is not None else None
+                    if line is not None:
+                        rank={'noFill':0,'solidFill':0,'gradFill':0,'pattFill':0,'prstDash':1,'custDash':1,
+                              'round':2,'bevel':2,'miter':2,'headEnd':3,'tailEnd':4,'extLst':5}
+                        order=[rank[child.tag[len(A):]] for child in line if child.tag.startswith(A) and child.tag[len(A):] in rank]
+                        if order!=sorted(order):problems.append('line_property_order_invalid')
                     if node.tag not in {P+'sp',P+'pic',P+'graphicFrame'}:continue
                     transform=node.find(P+'spPr/'+A+'xfrm')
                     if transform is None:transform=node.find(P+'xfrm')

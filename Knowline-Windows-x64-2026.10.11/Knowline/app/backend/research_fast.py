@@ -82,7 +82,9 @@ def finish(store,job,preparation):
         # Previously missing subscriptions need the controlled browser broker,
         # even when a public metadata refresher finds no new download URL.
         institution=getattr(store,'institutional',None)
-        if missing and institution and institution.status().get('config'):return None
+        # A cached failed lookup is never evidence that no PDF exists. Missing
+        # papers must enter the shared publisher/public acquisition route again.
+        if missing:return None
         # New URLs or new candidates need a fresh identity review through Codex.
         if any(p.get('full_text_url') for p in missing):return None
         urls=[]

@@ -3,11 +3,11 @@ import copy,hashlib,json,shutil,time
 from pathlib import Path
 from .safety import atomic_json,contained,digest,DomainError
 
-CONTRACT='layered-knowledge-efficient-v3'
+CONTRACT='evidence-to-experiment-v4'
 def signature(context):
  resources=sorted((r['type'],r['sha256'],tuple(r.get('allowed_files',[]))) for r in context['resources'])
  layers=[(l['name'].strip(),l['focus'].strip()) for l in context['knowledge_layers']]
- return hashlib.sha256(json.dumps({'resources':resources,'layers':layers},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
+ return hashlib.sha256(json.dumps({'resources':resources,'layers':layers,'contract':context.get('knowledge_build',{}).get('research_contract','legacy-v3')},ensure_ascii=False,sort_keys=True).encode()).hexdigest()
 
 def reuse(store,job):
  if job['task'] not in {'build_knowledge','update_knowledge'}:return None
@@ -18,6 +18,7 @@ def reuse(store,job):
   if row['id']==job['id']:continue
   prior=store.job(row['id'])
   if signature(prior['context'])!=scope:continue
+  if job['context'].get('knowledge_build',{}).get('research_contract')==CONTRACT and [(r['resource_id'],r['version_id']) for r in prior['context']['resources']]!=[(r['resource_id'],r['version_id']) for r in job['context']['resources']]:continue
   try:prior_kb=store.kb(prior['context']['scope']['kb_id'])
   except DomainError:continue
   if prior_kb['knowledge_state']!='organized' or not prior_kb.get('retrieval',{}).get('learned_model'):continue
@@ -55,14 +56,33 @@ def checkpoint(store,job):
  """Retry the validated analysis checkpoint, with all retrieval checks rerun."""
  if job['task'] not in {'build_knowledge','update_knowledge'}:return None
  result=copy.deepcopy(job.get('result') or {})
- if not result.get('knowledge_cards') or not result.get('knowledge_build_report'):return None
+ origin='accepted_job_result'
+ if not result.get('knowledge_cards') or not result.get('knowledge_build_report'):
+  # Ingestion and index publication share a transaction. A retrieval failure
+  # rolls back the DB result, but the authored manifest still exists on disk.
+  saved=contained(store.project,job['context']['output_dir'])/'result.json'
+  # prepare_retry moves the previous attempt before the shared preflight runs.
+  if not saved.is_file():saved=saved.with_name('result.previous.json')
+  if not saved.is_file() or saved.stat().st_size>2*1024*1024:return None
+  try:result=json.loads(saved.read_text('utf-8-sig'))
+  except (ValueError,OSError):return None
+  if not isinstance(result,dict) or result.get('job_id')!=job['id'] or result.get('schema_version')!=2 or result.get('status')!='completed':return None
+  if not result.get('knowledge_cards') or not result.get('knowledge_build_report'):return None
+  origin='saved_result_manifest'
  from .knowledge import validate_result
  try:
+  original_hash=digest(saved) if origin=='saved_result_manifest' else None
+  from .research_contracts import normalize_analysis
+  result=normalize_analysis(result)
   validate_result(store,job,result)
   for a in result['artifacts']:
    p=contained(store.project,a['path'])
    if not p.is_file() or digest(p)!=a['sha256']:return None
  except (DomainError,ValueError,KeyError,OSError):return None
- result['knowledge_resume']={'validated_analysis_reused':True,'full_retrieval_revalidation_required':True}
+ result['knowledge_resume']={'validated_analysis_reused':True,'full_retrieval_revalidation_required':True,'checkpoint_origin':origin,'original_manifest_sha256':original_hash}
+ if origin=='saved_result_manifest':
+  source=saved
+  previous=source.with_name('result.previous.json')
+  if not previous.exists():shutil.copy2(source,previous)
  atomic_json(contained(store.project,job['context']['output_dir'])/'result.json',result)
  return result

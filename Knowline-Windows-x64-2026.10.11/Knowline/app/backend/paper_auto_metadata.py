@@ -1,4 +1,4 @@
-"""Import-scoped bibliography verification. No agent jobs or full-text discovery.
+"""Search-based bibliography updates, independent of PDF identity. No agent jobs.
 
 Network work happens outside Store.mutate; results commit through the public
 writer after checking the current PDF version/hash. Only a short title or stable
@@ -6,6 +6,7 @@ identifier goes to the fixed public metadata APIs, never PDF/authentication data
 """
 import asyncio
 import json
+import logging
 import re
 import time
 import unicodedata
@@ -14,6 +15,26 @@ from . import paper_bibliography as bibliography
 from .pdf import open_pdf
 from .safety import DomainError, digest
 from .store import uid
+
+
+def lookup_signature(resource):
+    meta=resource['metadata']
+    return bibliography.hash_bytes(json.dumps([resource['title'],meta.get('doi'),meta.get('arxiv_id'),
+        meta.get('authors'),resource.get('version_id'),resource.get('sha256'),
+        sorted(k for k,v in meta.get('field_sources',{}).items() if v.get('locked'))],sort_keys=True).encode())
+
+
+def verification_due(resource):
+    """Only unresolved searches retry; completed citations do not poll the web."""
+    if resource.get('type')!='paper' or resource.get('state')!='ready':return False
+    meta=resource['metadata'];report=meta.get('metadata_verification') or {}
+    if report.get('policy')!='publication_record_v2':return True
+    if report.get('state')=='verified' and meta.get('metadata_status')=='verified' and not report.get('refresh_state'):return False
+    if report.get('lookup_signature') and report['lookup_signature']!=lookup_signature(resource):return True
+    delays=(30,120,600,3600) if (report.get('refresh_state') or report.get('state'))=='source_unavailable' else (300,1800,21600)
+    attempt=report.get('retry_count')
+    attempt=max(1,attempt) if isinstance(attempt,int) else 1
+    return not bibliography.fresh(report.get('refresh_checked_at') or report.get('checked_at'),delays[min(attempt-1,len(delays)-1)])
 
 
 def inspect_pdf(path, hints):
@@ -96,25 +117,25 @@ def identity(record, evidence):
     raise DomainError('citation_identity_conflict',409)
 
 
-async def search_title(evidence):
-    if not evidence['title']:raise DomainError('citation_identifier_required')
-    url='https://api.crossref.org/works?'+urlencode({'query.title':evidence['title'],'rows':5})
+async def search_title(query):
+    """Select one exact public title result, without comparing its PDF contents."""
+    title=query.get('title','')
+    if not title:raise DomainError('citation_identifier_required')
+    url='https://api.crossref.org/works?'+urlencode({'query.title':title,'rows':5})
     try:works=json.loads(await bibliography.fetch(url))['message']['items']
     except (ValueError,KeyError,TypeError):raise DomainError('citation_source_invalid')
-    matches=[]
+    matches={}
     for work in works[:5]:
-        try:
-            record=bibliography.crossref(work,bibliography.stamp())
-            if record['publication_status']!='published':continue
-            check=identity(record,evidence)
-            # Query results must match the extracted title exactly as well as PDF authors.
-            if bibliography.norm(record['title'])!=bibliography.norm(evidence['title']):continue
-            matches.append((record,check))
+        try:record=bibliography.crossref(work,bibliography.stamp())
         except DomainError:continue
-    if len(matches)!=1:raise DomainError('citation_identity_conflict' if matches else 'citation_match_not_found',409)
-    # Fetch the authoritative identifier record, not a search snippet.
-    record=await bibliography.resolve(matches[0][0]['doi'])
-    return record,identity(record,evidence)
+        if record['publication_status']=='published' and bibliography.norm(record['title'])==bibliography.norm(title):
+            matches[record['doi']]=record
+    if len(matches)>1 and query.get('authors'):
+        authors=[bibliography.norm(a) for a in query['authors']]
+        matches={key:value for key,value in matches.items() if [bibliography.norm(a) for a in value['authors']]==authors}
+    if not matches:raise DomainError('citation_match_not_found',409)
+    if len(matches)!=1:raise DomainError('citation_search_ambiguous',409)
+    return await bibliography.resolve(next(iter(matches)))
 
 
 class PaperMetadataVerifier:
@@ -140,10 +161,33 @@ class PaperMetadataVerifier:
         verification=await self.verify(resource['id'],hints or {})
         return {**result,'resource':self.store.resource(resource['id']),'metadata_verification':verification,'metadata_job':None}
 
+    async def repair_pending(self,limit=20):
+        # This is a bounded maintenance pass, not an agent task or full re-import.
+        resources=self.store.resources(summary=True)
+        pending_ids={key[0] for key,task in self.pending.items() if not task.done()}
+        candidates=[r for r in resources if r['id'] not in pending_ids and verification_due(r)]
+        candidates.sort(key=lambda r:(r['metadata'].get('metadata_verification') or {}).get('refresh_checked_at') or
+                        (r['metadata'].get('metadata_verification') or {}).get('checked_at') or '')
+        reports=[]
+        for offset in range(0,min(limit,len(candidates)),2):
+            batch=candidates[offset:min(offset+2,limit)]
+            results=await asyncio.gather(*(self.verify(r['id'],{'refresh':True}) for r in batch),return_exceptions=True)
+            for result in results:
+                if isinstance(result,Exception):
+                    if not isinstance(result,DomainError) or result.code not in {'resource_not_found','resource_unavailable'}:
+                        logging.getLogger(__name__).warning('Automatic citation retry failed: %s',type(result).__name__)
+                elif isinstance(result,dict):reports.append(result)
+        return reports
+
+    async def maintain(self):
+        while True:
+            await self.repair_pending()
+            await asyncio.sleep(30)
+
     async def verify(self,resource_id,hints=None):
         resource=self.store.resource(resource_id)
         if resource['type']!='paper':return {'state':'not_applicable'}
-        key=(resource_id,resource['version_id'],resource['sha256'],bool((hints or {}).get('refresh')))
+        key=(resource_id,resource['version_id'],resource['sha256'])
         if key not in self.pending:self.pending[key]=asyncio.create_task(self._verify(resource,hints or {}))
         task=self.pending[key]
         try:return await asyncio.shield(task)
@@ -151,85 +195,69 @@ class PaperMetadataVerifier:
             if task.done() and self.pending.get(key) is task:self.pending.pop(key,None)
 
     async def _verify(self,resource,hints):
-        started=time.perf_counter();timings={};cached=False;record=None;check=None
+        started=time.perf_counter();timings={}
         version=resource['version_id'];sha=resource['sha256'];rid=resource['id']
-        async def commit(report,record=None,check=None):
+        async def commit(report,record=None):
             def action():
-                nonlocal report
                 current=self.store.resource(rid)
                 if (current['version_id'],current['sha256'])!=(version,sha):return {**report,'state':'superseded','reason':'version_changed'}
                 if record:
-                    locks=current['metadata'].get('field_sources',{})
-                    conflicts=[field for field in bibliography.FIELDS if locks.get(field,{}).get('locked') and record.get(field) and
-                        (current['title'] if field=='title' else current['metadata'].get(field)) and bibliography.norm(str(current['title'] if field=='title' else current['metadata'].get(field)))!=bibliography.norm(str(record[field]))]
-                    if conflicts:report={**report,'state':'partial','reason':'locked_field_conflict','conflicting_fields':conflicts}
                     saved=bibliography.save(self.store,record)
-                    from .acquisition_metadata import apply
-                    current,_=apply(self.store,current,{'doi':saved.get('doi',''),'title':saved['title'],'authors':saved['authors'],'pdf_version':current['metadata'].get('pdf_version','unknown'),'citation_record':saved,'pdf_identity':check},
-                        {'sha256':sha,'identity_check':check,'acquired_at':bibliography.stamp()},True)
-                    bibliography.outcome(self.store,saved['id'],'acquired',resource_id=rid,pdf_version=current['metadata'].get('pdf_version','unknown'))
+                    current=bibliography.attach_metadata(self.store,saved,rid,report)
+                    return current['metadata']['metadata_verification']
                 prior=current['metadata'].get('metadata_status')
-                status='verified' if report['state']=='verified' else 'partially_verified' if record else prior if prior=='verified' else 'needs_review'
-                self.store.update_resource(rid,{'base_revision':current['revision'],'metadata_status':status,'metadata_verification':report,
-                    **({'pdf_version':'unknown'} if not current['metadata'].get('pdf_version') else {}),
-                    'field_sources':{'metadata_status':{'source':'automatic_import_verification','retrieved_at':report['checked_at']},'metadata_verification':{'source':'automatic_import_verification','retrieved_at':report['checked_at']}}})
-                return report
+                previous=current['metadata'].get('metadata_verification') or {}
+                attempts=previous.get('retry_count')
+                current_report={**report,'retry_count':max(0,attempts)+1 if isinstance(attempts,int) else 1,'lookup_signature':lookup_signature(current)}
+                # A temporary failed refresh cannot revoke an evidenced citation.
+                # Keep the successful check time and expose the retry separately.
+                if report['state']=='source_unavailable' and prior=='verified' and previous.get('policy')=='publication_record_v2' and previous.get('state')=='verified':
+                    current_report={**previous,'refresh_state':report['state'],'refresh_reason':report['reason'],
+                                    'refresh_checked_at':report['checked_at'],'retry_count':current_report['retry_count'],
+                                    'lookup_signature':current_report['lookup_signature'],'timings_ms':report['timings_ms']}
+                status=prior if prior in {'verified','partially_verified'} else 'needs_review'
+                self.store.update_resource(rid,{'base_revision':current['revision'],'metadata_status':status,'metadata_verification':current_report,
+                    'field_sources':{'metadata_status':{'source':'automatic_publication_search','retrieved_at':report['checked_at']},'metadata_verification':{'source':'automatic_publication_search','retrieved_at':report['checked_at']}}})
+                return current_report
             return await self.write('automatic_paper_metadata',{'operation_id':uid('op'),'resource_id':rid,'version_id':version},action)
+        at=started
         try:
             async with self.gate:
                 at=time.perf_counter()
-                evidence=await asyncio.to_thread(inspect_pdf,self.store.snapshot(resource),{**resource['metadata'],'title':resource['title'],**hints})
-                timings['pdf_identity_ms']=round((time.perf_counter()-at)*1000,2)
-                if evidence['sha256']!=sha:raise DomainError('hash_conflict',409)
-                at=time.perf_counter()
-                # Reuse only local verified records with intact immutable source evidence.
-                known=bibliography.rows(self.store)
-                for candidate in ([] if hints.get('refresh') else known):
-                    if candidate.get('alias_of') or candidate.get('metadata_status')!='verified' or not candidate.get('latest_verified') or not bibliography.fresh(candidate.get('latest_checked_at'),300):continue
+                meta=resource['metadata'];publication=meta.get('publication_record') or {}
+                identifier=hints.get('doi') or meta.get('doi') or publication.get('doi')
+                arxiv_id=hints.get('arxiv_id') or meta.get('arxiv_id') or publication.get('arxiv_id')
+                query={'title':hints.get('title') or resource['title'],'authors':hints.get('authors') or meta.get('authors') or []}
+                # For an unlabelled local import the PDF may supply search clues.
+                # These clues never become an acceptance gate for source metadata.
+                if not identifier and not arxiv_id and not publication:
                     try:
-                        path=self.store.project/candidate['evidence_path']
-                        if digest(path)!=candidate['evidence_sha256']:continue
-                        identity_check=identity(candidate,evidence)
-                        if not evidence['dois'] and not evidence['arxiv_id']:
-                            same=[r for r in known if not r.get('alias_of') and r.get('title')==candidate['title'] and r.get('authors')==candidate['authors']]
-                            if len(same)!=1:continue
-                        record=candidate;check=identity_check;cached=True;break
-                    except (DomainError,OSError,KeyError):continue
-                if not record:
-                    # Bound the entire public lookup, including rate-limit waiting.
-                    async def lookup():
-                        if evidence['arxiv_id']:
-                            value=await self.resolve(arxiv_id=evidence['arxiv_id'],refresh=hints.get('refresh',False));return value,identity(value,evidence)
-                        # Prefer a header DOI confirmed by the caller when several identifiers occur.
-                        identifiers=evidence['dois'];preferred=str(hints.get('doi') or resource['metadata'].get('doi') or '').lower()
-                        if preferred in identifiers:identifiers=[preferred]+[v for v in identifiers if v!=preferred]
-                        for identifier in identifiers[:2]:
-                            value=await self.resolve(identifier,refresh=hints.get('refresh',False))
-                            try:return value,identity(value,evidence)
-                            except DomainError:continue
-                        return await search_title(evidence)
-                    record,check=await asyncio.wait_for(lookup(),35)
+                        clues=await asyncio.to_thread(inspect_pdf,self.store.snapshot(resource),{**meta,'title':resource['title'],**hints})
+                        identifier=next(iter(clues['dois']),None)
+                        arxiv_id=clues['arxiv_id'] or None
+                        if clues['title']:query['title']=clues['title']
+                    except (DomainError,OSError,ValueError,KeyError,TypeError):pass
+                timings['search_clues_ms']=round((time.perf_counter()-at)*1000,2)
+                at=time.perf_counter()
+                async def lookup():
+                    if identifier:return await self.resolve(identifier,refresh=hints.get('refresh',False))
+                    if arxiv_id:return await self.resolve(arxiv_id=arxiv_id,refresh=hints.get('refresh',False))
+                    return await search_title(query)
+                record=await asyncio.wait_for(lookup(),35)
                 timings['source_lookup_ms']=round((time.perf_counter()-at)*1000,2)
-                previous=resource['metadata'].get('metadata_verification',{})
-                if cached and previous.get('state')=='verified' and previous.get('version_id')==version and previous.get('sha256')==sha and all(
-                    not record.get(k) or bibliography.norm(str(resource['title'] if k=='title' else resource['metadata'].get(k)))==bibliography.norm(str(record[k])) for k in bibliography.FIELDS):
-                    return {**previous,'source_reused':True,'timings_ms':{**timings,'total_ms':round((time.perf_counter()-started)*1000,2)}}
-                missing=[k for k in ['title','authors','year','venue','source_type'] if not record.get(k)]
-                conflicts=[]
-                locks=resource['metadata'].get('field_sources',{})
-                for field in bibliography.FIELDS:
-                    old=resource['title'] if field=='title' else resource['metadata'].get(field)
-                    if locks.get(field,{}).get('locked') and old and record.get(field) and bibliography.norm(str(old))!=bibliography.norm(str(record[field])):conflicts.append(field)
-                report={'state':'partial' if missing or conflicts or record.get('metadata_status')!='verified' else 'verified','reason':'locked_field_conflict' if conflicts else 'missing_fields' if missing else 'verified_source_reused' if cached else 'public_source_verified',
-                        'checked_at':bibliography.stamp(),'source_url':record['source_url'],'missing_fields':missing,'conflicting_fields':conflicts,'identity_basis':check['basis'],
-                        'source_reused':cached,'version_id':version,'sha256':sha,'timings_ms':{**timings,'total_ms':round((time.perf_counter()-started)*1000,2)}}
-                return await commit(report,record,check)
+                report=bibliography.metadata_report(record,version_id=version,sha256=sha,
+                    timings_ms={**timings,'total_ms':round((time.perf_counter()-started)*1000,2)})
+                return await commit(report,record)
         except asyncio.CancelledError:raise
         except (DomainError,TimeoutError,OSError,ValueError,KeyError,TypeError) as exc:
             timings.setdefault('source_lookup_ms',round((time.perf_counter()-at)*1000,2))
             reason=exc.code if isinstance(exc,DomainError) else 'citation_source_timeout' if isinstance(exc,TimeoutError) else 'citation_source_invalid'
-            state='source_unavailable' if reason in {'citation_source_unavailable','citation_source_timeout'} else 'identity_conflict' if 'identity' in reason else 'needs_review'
-            report={'state':state,'reason':reason,'checked_at':bibliography.stamp(),'missing_fields':[], 'version_id':version,'sha256':sha,'timings_ms':{**timings,'total_ms':round((time.perf_counter()-started)*1000,2)}}
+            # Any conflict here is between search-source records, never with the PDF.
+            if reason in {'citation_identity_conflict','citation_relation_ambiguous'}:reason='citation_search_ambiguous'
+            state='source_unavailable' if reason in {'citation_source_unavailable','citation_source_timeout'} else 'needs_review'
+            report={'policy':'publication_record_v2','independent_of_pdf':True,'state':state,'reason':reason,
+                    'checked_at':bibliography.stamp(),'missing_fields':[],'version_id':version,'sha256':sha,
+                    'timings_ms':{**timings,'total_ms':round((time.perf_counter()-started)*1000,2)}}
             if isinstance(exc,DomainError) and isinstance(exc.params.get('http_status'),int):report['http_status']=exc.params['http_status']
             return await commit(report)
 

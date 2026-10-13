@@ -15,15 +15,15 @@
 | --- | --- |
 | **论文与代码资源库** | 通过文件选择器导入多个 PDF、PDF 文件夹、代码源文件或项目目录；保留代码目录结构，按内容去重，通过领域、标签和笔记组织资料。 |
 | **PDF 与代码阅读** | 连续阅读 PDF、缩放、选区、高亮和批注；浏览代码目录、带行号的源码并调整字号。论文页码和代码行号可作为任务证据。 |
-| **论文检索与论文星云图** | 按主题、年份和数量要求探索论文，从起点论文查看关联文献、摘要与来源，将选中候选导入资源库或指定领域。 |
-| **PDF 获取与摘要提取** | 复用已有全文；对应账户已登录时优先尝试正式出版版，未登录或获取失败时继续寻找合法公开全文。生成星图时同步尝试获取 PDF，从可用 PDF 提取摘要并记录来源页码。 |
+| **论文检索与论文星云图** | 按主题、年份和数量要求探索论文，从起点论文查看直接引用、共享参考文献、共同被引关系及摘要和来源；缺 PDF 保留节点，将选中候选导入资源库或指定领域。 |
+| **PDF 获取与摘要提取** | 复用已有全文；对应账户已登录时优先尝试正式出版版，未登录或获取失败时查 arXiv、GitHub、作者仓库与用户指定的 Sci-Hub 全文候选，记录实际查询状态。生成星图时同步尝试获取 PDF，从可用 PDF 提取摘要并记录来源页码。 |
 | **书目核验与引用导出** | 核对题名、作者、年份、刊会、DOI 和版本关系，分别记录正式书目与实际 PDF 版本；更新引用信息，导出文本、RIS 或 JSON 引用记录。 |
 | **分层知识库与知识网络** | 从选定论文和代码建库，自定义各层名称与侧重点；生成带来源的知识卡片、关联和图像，浏览知识网络，使用原文检索及关键词、语义与关联融合的知识检索。 |
 | **知识库导入与更新** | 点击“导入知识库”直接打开 Windows 文件夹选择窗口，无需手填路径；导入受支持的知识库目录，或添加资料并更新已有库。 |
 | **资料理解与方法分析** | 对明确选定的资料创建阅读、分析、翻译或方法比较任务，生成可追溯到原论文或源码的成果。 |
 | **正文与可编辑公式** | 选取论文区域，制作 Word 或 PowerPoint 正文与公式成果，使用原生可编辑公式并检查真实文件和预览。 |
 | **可编辑论文图复刻** | 将论文选区制作成 PowerPoint 图，使用独立文字、框体、连接线与图片层，保留来源和最终预览，便于继续修改。 |
-| **科研方案工作台** | 输入研究想法，选择论文、代码、知识库或其组合，生成 Word / PowerPoint 方案；基于上一轮成果继续优化，保留各轮来源与产物。 |
+| **科研方案工作台** | 输入研究想法，选择论文、代码、知识库或其组合，生成 Word 方案；基于上一轮成果继续优化，保留各轮来源与产物。 |
 | **Word 动态引用** | 连接指定 Word 文档，从已核验来源插入引文与参考文献；支持数字上标、IEEE、APA 和本机 GB7714 样式，以及编号更新、字体字号设置和引用跳转。 |
 | **机构访问** | 管理多个学校、出版社或数据库的官方入口，在各自专用窗口完成登录，后续任务复用对应站点会话。 |
 | **并行智能体任务** | 一次连接可复用的本地智能体执行入口，多个任务可同时执行；每份任务有独立范围、状态、取消控制、执行记录、电脑本地运行时间、用时和成果校验。 |
@@ -31,7 +31,7 @@
 
 ### 快速开始
 
-使用发行 ZIP 时，先将整个压缩包解压到可写目录，再启动。第三方组件及许可说明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+使用发行 ZIP 时，先将整个压缩包解压到可写目录，再启动。第三方组件及许可说明见 [第三方许可说明](app/docs/THIRD_PARTY_NOTICES.md)。
 
 1. 双击项目根目录的 **`StartKnowline.cmd`**，打开知序桌面版。
 2. 在资源库点击“导入资源”，选择论文 PDF、文件夹或代码，按需要加入领域。
@@ -103,7 +103,7 @@ Knowline is a Windows desktop research workspace for managing resources, explori
 | **Resource understanding and method analysis** | Create reading, analysis, translation and method-comparison tasks for an explicit resource selection, with outputs traceable to the original papers or code. |
 | **Text and editable equations** | Turn selected paper regions into Word or PowerPoint text and equation outputs using native editable equations, with actual file and preview checks. |
 | **Editable paper figure reconstruction** | Reconstruct a selected paper figure in PowerPoint with separate text, shapes, connectors and image layers, retaining the source and final previews for further editing. |
-| **Research proposal workspace** | Develop an idea using papers, code, knowledge bases or a combination. Generate Word / PowerPoint proposals and refine previous rounds while retaining their sources and outputs. |
+| **Research proposal workspace** | Develop an idea using papers, code, knowledge bases or a combination. Generate Word proposals and refine previous rounds while retaining their sources and outputs. |
 | **Dynamic Word citations** | Connect a selected Word document and insert citations and bibliographies from verified sources. Use numbered superscripts, IEEE, APA or locally installed GB7714 styles, update numbering, adjust typography and follow citation links. |
 | **Institutional access** | Manage official entries for multiple institutions, publishers or databases. Sign in through dedicated windows and let subsequent tasks reuse the matching site session. |
 | **Concurrent agent tasks** | Connect a reusable local execution client once and run multiple tasks concurrently. Each task has its own scope, status, cancellation controls, execution history, computer-local run time, duration and output validation. |
@@ -111,7 +111,7 @@ Knowline is a Windows desktop research workspace for managing resources, explori
 
 ### Quick start
 
-Extract the entire release ZIP into a writable directory before launching. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party component and licensing notices.
+Extract the entire release ZIP into a writable directory before launching. See [第三方许可说明](app/docs/THIRD_PARTY_NOTICES.md) for third-party component and licensing notices.
 
 1. Double-click **`StartKnowline.cmd`** in the project root to open the desktop application.
 2. Click Import resources and select PDFs, folders or code. Add resources to a domain if needed.
@@ -166,3 +166,18 @@ The following technical documents are currently primarily in Chinese:
 - [Formal citation records and PDF versions](app/docs/CITATION_PDF_SEPARATION.md)
 - [Source selection for research proposals](app/docs/PROPOSAL_SOURCES.md)
 - [CLI / API protocol](app/docs/PROTOCOL.md)
+
+
+## 空白发行版 2026.10.13
+
+本包包含空资源库，不包含论文、历史任务、机构登录会话或智能体凭据。启动入口为 StartKnowline.cmd。首次使用请连接自己的本地智能体。Word/PPT 功能需要本机安装对应 Microsoft Office 桌面应用。生成成果统一保存到与 app 同级的 outputs。
+
+本版包含论文公开全文回退、星图全文信息刷新、论文图高清选区、可编辑文字重建和失败后已有 PPT 保留修复。文件能打开与内容全部完成分别验收；原图不可辨认的残缺字符会保留可编辑轮廓并明确标为部分完成，不能保证恢复不可读文字。详情见 [发行说明](app/docs/RELEASE_NOTES.md)。
+
+### 本次更新
+
+- 论文关系图保留全部已核实论文；分别显示直接引用、共享参考文献和共同被引关系，PDF 缺失不删点。
+- 关系核验与 PDF 获取由两个专职智能体协作，获取前先判断对应出版商账户认证。
+- 接入 arXiv、GitHub 及 DOI 对应的 Sci-Hub 全文获取路由；第三方全文来源不作为正式发表或开放许可依据。
+- PDF 阅读工具位于阅读器内部左侧；科研图复刻采用有界合并审核流程。
+- 本包不包含用户资源、知识库、历史任务、成果、登录会话或智能体绑定，首次使用由应用建立空状态。

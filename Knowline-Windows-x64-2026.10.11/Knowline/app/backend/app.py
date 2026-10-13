@@ -55,7 +55,7 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
 
     def queue_metadata(result):
         if not result.get('changes'):return
-        task=asyncio.create_task(verify_changes(result))
+        task=asyncio.create_task(verify_changes(result),name='metadata-scan')
         tasks.add(task);task.add_done_callback(tasks.discard)
 
     from .institutional_broker import InstitutionalBroker
@@ -85,7 +85,7 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
                 if job:await codex.start(job['id'],{'operation_id':uid('op'),'base_revision':job['revision']})
             except DomainError as exc:
                 if exc.code!='kb_not_found':raise
-        task = asyncio.create_task(build())
+        task = asyncio.create_task(build(),name='knowledge-build:'+id)
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         return task
@@ -106,6 +106,14 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         await write('initialize_domains',{'operation_id':uid('op')},store.initialize_domains)
         from .retention import maintain
         await write('storage_startup',{'operation_id':uid('op')},lambda:maintain(store))
+        async def retry_deletions():
+            from .storage_delete import drain
+            while True:
+                if store.one("SELECT key FROM settings WHERE key LIKE 'storage_delete:%' LIMIT 1"):
+                    await write('storage_cleanup_retry',{'operation_id':uid('op')},lambda:drain(store))
+                await asyncio.sleep(30)
+        tasks.add(asyncio.create_task(retry_deletions()))
+        tasks.add(asyncio.create_task(paper_metadata.maintain(),name='citation-maintenance'))
         if watch:
             task = asyncio.create_task(watch_loop())
             tasks.add(task)
@@ -502,7 +510,8 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
             batch=identifiers[offset:offset+2]
             results=await asyncio.gather(*(paper_metadata.verify(rid,{'refresh':True}) for rid in batch))
             reports.extend({'resource_id':rid,**result} for rid,result in zip(batch,results))
-        return {'rows':reports,'total':len(reports),'verified_count':sum(r['state']=='verified' for r in reports),'metadata_job':None}
+        return {'rows':reports,'total':len(reports),'verified_count':sum(r['state']=='verified' for r in reports),
+                'refreshed_count':sum(r['state']=='verified' and not r.get('refresh_state') for r in reports),'metadata_job':None}
 
     @app.get('/api/v1/resources/{id}')
     def resource(id: str):
@@ -647,6 +656,11 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         from .knowledge import assemble
         return await write('assemble:'+id,body,lambda:assemble(store,id,body))
 
+    @app.post('/api/v1/knowledge-bases/{id}/refresh-retrieval')
+    async def refresh_retrieval(id:str,body:dict):
+        from .knowledge import refresh_retrieval
+        return await write('refresh_retrieval:'+id,body,lambda:refresh_retrieval(store,id,body))
+
     @app.post('/api/v1/knowledge-bases/select-folder')
     async def select_knowledge_folder(body:dict):
         from .folder_picker import select_folder
@@ -679,11 +693,43 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         return FileResponse(figure_path(store,id,card_id),media_type='image/png')
 
     @app.get('/api/v1/knowledge-bases/{id}/query')
-    def query(id: str, q: str, kb_revision:int):
+    def query(id: str, q: str, kb_revision:int, purpose:str='evidence', layer_id:str|None=None):
         kb=store.kb(id)
         if kb_revision != kb['revision']:
             raise DomainError('revision_conflict',409,current_revision=kb['revision'])
-        return store.query(id, q[:500])
+        return store.query(id, q[:500],purpose,[layer_id] if layer_id else None)
+
+    @app.get('/api/v1/knowledge-bases/{id}/evidence/{unit_id}')
+    def expand_knowledge_evidence(id:str,unit_id:str,kb_revision:int):
+        kb=store.kb(id)
+        if kb['revision']!=kb_revision:raise DomainError('revision_conflict',409,current_revision=kb['revision'])
+        if kb.get('knowledge_state')!='organized':raise DomainError('knowledge_base_not_ready')
+        from .knowledge_retrieval import expand
+        return expand(store,kb['retrieval'],unit_id)
+
+    @app.post('/api/v1/jobs/{id}/research-search')
+    async def research_search(id:str,body:dict):
+        from .research_design import search
+        return await write('research-search:'+id,body,lambda:search(store,id,body))
+
+    @app.post('/api/v1/jobs/{id}/audit-proposal')
+    async def audit_proposal(id:str,body:dict):
+        from .research_design import audit_saved
+        if id in codex.routes or id in codex.stopping:raise DomainError('job_already_claimed',409)
+        accepted=await write('audit-proposal:'+id,body,lambda:audit_saved(store,id,body))
+        codex.info(id,accepted['status'],'已复用已保存方案，知识库来源与成果重新验收通过。',generation_reused=True)
+        return codex.job(id)
+
+    @app.get('/api/v1/jobs/{id}/knowledge-card')
+    def proposal_knowledge_card(id:str,kb_id:str,card_id:str):
+        from .proposal_evidence import FrozenKnowledge
+        sources=FrozenKnowledge(store,store.job(id))
+        entry=sources.cards.get((kb_id,card_id))
+        if not entry:raise DomainError('knowledge_citation_outside_scope',404)
+        content='所选知识库的冻结内容；原始论文或实验未由本页重新核验。\n'
+        content+='知识库：'+str(entry['kb'].get('name',kb_id))+' · 版本 '+str(entry['kb']['revision'])+'\n'
+        content+='来源：'+entry['source_title']+'\n卡片：'+card_id+'\n\n'+entry['card']['content']
+        return Response(content,media_type='text/plain; charset=utf-8',headers={'X-Content-Type-Options':'nosniff'})
 
     @app.get('/api/v1/knowledge-bases/{id}/graph')
     def graph(id: str, parent: str | None = None):
@@ -761,8 +807,8 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         return await write('audit-completion:'+id,body,lambda:store.audit_literature_job(id,body))
 
     @app.post('/api/v1/jobs/{id}/claim')
-    async def claim_job(id: str, body: dict):
-        return await codex.claim(id, body)
+    async def claim_job(id: str, body: dict, request: Request):
+        return await codex.claim(id, body, request)
 
     @app.post('/api/v1/jobs/{id}/fail')
     async def fail_job(id: str, body: dict, request: Request):
@@ -783,7 +829,9 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
     async def copy_office(id:str,body:dict):
         from .office_clipboard import copy
         job=store.job(id);store.check(job,body)
-        if job['task']!='copy_office_selection' or job['status']!='completed':raise DomainError('office_fragment_not_ready')
+        # Completeness warnings do not make an accepted Office fragment unusable.
+        # Artifact identity/hash and native structure are still checked below.
+        if job['task']!='copy_office_selection' or job['status'] not in {'completed','partial'}:raise DomainError('office_fragment_not_ready')
         spec=(job['result'] or {}).get('office_fragment',{})
         artifact=next((a for a in job['result']['artifacts'] if a['path']==spec.get('path')),None)
         if not artifact or spec.get('target')!=job['context'].get('office_selection',{}).get('target'):raise DomainError('office_fragment_invalid')
@@ -819,7 +867,10 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
         entries=body.get('jobs')
         if not isinstance(entries,list) or not 1<=len(entries)<=200 or any(not isinstance(e,dict) or not isinstance(e.get('id'),str) for e in entries) or len({e['id'] for e in entries})!=len(entries):raise DomainError('invalid_request')
         for entry in entries:store.check(store.job(entry['id']),entry)
-        for entry in entries:await codex.cancel(entry['id'])
+        for entry in entries:await codex.cancel(entry['id'],wait=True)
+        from .office_clipboard import release_owned_sources
+        roots=[contained(project,store.job(e['id'])['context']['output_dir'],False) for e in entries]
+        await asyncio.to_thread(release_owned_sources,roots)
         def remove():
             entries=body.get('jobs')
             if not isinstance(entries,list) or not 1<=len(entries)<=200 or any(not isinstance(e,dict) or not isinstance(e.get('id'),str) for e in entries):
@@ -828,21 +879,31 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
             selected=[]
             for entry in entries:
                 job=store.job(entry['id']);selected.append(job)
+            from .storage_ownership import plan
+            from .storage_delete import enqueue
+            ownership=plan(store,'job',[job['id'] for job in selected])
             for job in selected:
                 store.db.execute('DELETE FROM jobs WHERE id=?',(job['id'],))
                 store.event('job',job['id'],job['revision']+1)
-            return {'deleted':[job['id'] for job in selected]}
+            enqueue(store,ownership)
+            return {'deleted':[job['id'] for job in selected],'exclusive_file_deletion_queued':True,'cleanup_scope':'job_outputs'}
         return await write('delete_jobs',body,remove)
 
     @app.delete('/api/v1/jobs/{id}')
     async def delete_job(id:str,body:dict):
         store.check(store.job(id),body)
-        await codex.cancel(id)
+        await codex.cancel(id,wait=True)
+        from .office_clipboard import release_owned_sources
+        await asyncio.to_thread(release_owned_sources,[contained(project,store.job(id)['context']['output_dir'],False)])
         def remove():
             job=store.job(id)
+            from .storage_ownership import plan
+            from .storage_delete import enqueue
+            ownership=plan(store,'job',[id])
             store.db.execute('DELETE FROM jobs WHERE id=?',(id,))
             store.event('job',id,job['revision']+1)
-            return {'id':id,'state':'deleted'}
+            enqueue(store,ownership)
+            return {'id':id,'state':'deleted','exclusive_file_deletion_queued':True,'cleanup_scope':'job_outputs'}
         return await write('delete_job:'+id,body,remove)
 
     @app.post('/api/v1/jobs/{id}/ingest')
@@ -894,6 +955,13 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
     async def coalesce_paper_storage(body:dict):
         from .paper_storage import coalesce
         return await write('coalesce_papers',body,lambda:coalesce(store))
+
+    @app.post('/api/v1/maintenance/clear-deleted-content')
+    async def clear_deleted_content(body:dict):
+        from .management import clear_deleted_content as clear
+        if any(not task.done() for task in paper_metadata.pending.values()) or any(not task.done() for task in tasks if task.get_name().startswith(('knowledge-build:','metadata-scan'))):
+            raise DomainError('reset_background_work_active',409)
+        return await write('delete_all_content',body,lambda:clear(store,body))
 
     @app.post('/api/v1/maintenance/storage')
     async def storage_maintenance(body:dict):
@@ -1025,21 +1093,16 @@ def create_app(project=None, resource_root=None, state_dir='.knowledge', watch=T
     @app.post('/api/v1/paper-records/resolve')
     async def resolve_citation(body:dict):
         domain_id=bibliography_scope(body)
-        from .paper_bibliography import resolve,save,attach,outcome,get
+        from .paper_bibliography import resolve,save,attach_metadata,get
         if body.get('resource_id') and body.get('job_id'):
             job=store.job(body['job_id']);frozen=next((r for r in job['context'].get('resources',[]) if r['resource_id']==body['resource_id']),None)
             if not frozen or store.resource(body['resource_id'])['version_id']!=frozen['version_id']:raise DomainError('scope_violation',409)
         record=await resolve(body.get('doi'),body.get('arxiv_id'))
         value=await write('paper_record',body,lambda:save(store,record,domain_id))
         if body.get('resource_id'):
-            # Persist the citation first: a failed PDF association cannot roll it back.
-            link_body={**body,'operation_id':hash_bytes((body['operation_id']+':pdf-link').encode())}
-            try:
-                await write('paper_record_link',link_body,lambda:attach(store,value,body['resource_id'],body.get('pdf_identity')))
-            except DomainError as exc:
-                failed={**body,'operation_id':hash_bytes((body['operation_id']+':pdf-link-failed').encode())}
-                await write('paper_record_pdf',failed,lambda:outcome(store,value['id'],'needs_user',reason=exc.code))
-                return {**get(store,value['id']),'pdf_link':{'status':'needs_user','reason':exc.code}}
+            # Search metadata can be refreshed even for a different PDF version.
+            link_body={**body,'operation_id':hash_bytes((body['operation_id']+':metadata-link').encode())}
+            await write('paper_record_link',link_body,lambda:attach_metadata(store,value,body['resource_id']))
             value=get(store,value['id'])
         return value
 

@@ -85,7 +85,8 @@ def _worker():
                 continue
             try:
                 if path is None:
-                    if current:_close_document(current[1],current[2],current[3]);current=None
+                    if current and (kind is None or any(current[3].is_relative_to(root) for root in kind)):
+                        _close_document(current[1],current[2],current[3]);current=None
                     future.set_result(True);continue
                 count=check(path,kind)
                 app,document=_copy_owned(path,kind)
@@ -117,9 +118,9 @@ def copy(path,kind):
     return future.result(timeout=30)
 
 
-def release_owned_sources():
+def release_owned_sources(roots=None):
     if _thread is not None and _thread.is_alive():
-        future=Future();_requests.put((None,None,future));future.result(timeout=10)
+        future=Future();_requests.put((None,roots,future));future.result(timeout=10)
 def effective_office_xml(data):
     """Resolve mutually exclusive Office compatibility representations once."""
     import io,xml.etree.ElementTree as ET

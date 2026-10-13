@@ -1,1 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect x="12" y="12" width="232" height="232" rx="56" fill="#173e35"/><g fill="none" stroke="#bce8d4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M58 158C38 141 42 112 58 103C55 84 71 68 89 71C101 48 133 46 149 61C174 56 196 77 193 97C211 105 215 129 203 144C208 165 190 182 171 180L162 195L145 195L149 176C131 181 116 172 111 159C92 176 70 173 58 158Z"/><path stroke-width="5" d="M73 119L112 100L151 121L177 100M112 100L112 145L151 121"/></g><g fill="#eecc85"><circle cx="73" cy="119" r="7"/><circle cx="112" cy="100" r="7"/><circle cx="151" cy="121" r="7"/></g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <title>知序</title>
+  <rect width="256" height="256" rx="52" fill="#fff"/>
+  <g fill="none" stroke="#1d1d1f" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M68 177C43 174 34 150 47 130C36 108 49 84 72 83C76 58 105 46 126 61C149 45 181 58 185 84C211 90 223 118 208 139C214 163 194 184 170 180L158 194H144L147 176C130 180 115 172 109 160C100 174 84 181 68 177Z"/>
+    <path d="M79 132L126 108L173 132"/>
+  </g>
+  <g fill="#fff" stroke="#1d1d1f" stroke-width="7">
+    <circle cx="79" cy="132" r="9"/>
+    <circle cx="126" cy="108" r="9"/>
+    <circle cx="173" cy="132" r="9"/>
+  </g>
+</svg>

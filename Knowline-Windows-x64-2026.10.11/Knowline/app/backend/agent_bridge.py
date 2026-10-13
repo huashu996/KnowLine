@@ -4,6 +4,7 @@ import hashlib
 import json
 import secrets
 import time
+from datetime import datetime
 from .safety import DomainError, atomic_json, contained
 from .store import now, uid
 from .codex_runner import instructions
@@ -12,7 +13,7 @@ from .research_policy import total_budget
 TASKS = ['read_resources','compare_resources','translate_resources','analyze_resources',
          'discover_papers','paper_relationships','refresh_graph_citations','import_graph_papers',
          'verify_paper_metadata','build_knowledge','update_knowledge','copy_office_selection',
-         'replicate_paper_figure','proposal_word','proposal_ppt']
+         'replicate_paper_figure','proposal_word']
 
 
 def protect_local_file(path):
@@ -38,6 +39,7 @@ class AgentBridge:
         self.selected = None
         self.pending = {}
         self.routes = {}
+        self.stopping = {}
         self.monitor = None
         self.binding = store.state/'agent-worker'/'adapter.json'
         self.recovery = set()
@@ -163,6 +165,10 @@ class AgentBridge:
         if time.monotonic()-self.selected['heartbeat']>=20:
             await self.disconnect();raise DomainError('agent_disconnected',409)
         self.selected['heartbeat']=time.monotonic()
+        finished=body.get('finished_lease')
+        for id,pending in list(self.stopping.items()):
+            if finished and pending['lease']==finished and pending['agent_id']==body['agent_id']:
+                pending['stopped'].set();self.stopping.pop(id,None)
         if body.get('job_id'):
             route=self.routes.get(body['job_id'])
             if not route or route['agent_id']!=body['agent_id'] or route['lease']!=body.get('lease'):raise DomainError('agent_lease_invalid',409)
@@ -189,10 +195,18 @@ class AgentBridge:
     def job(self,id):
         job=self.compatibility.job(id)
         if job['task']=='import_graph_papers':return job
+        if (job.get('execution') or {}).get('mode')=='manual':return job
         file=self.store.state/'jobs'/id/'agent-execution.json'
         if file.exists():
             shared=job.get('execution') or {}
             execution=json.loads(file.read_text('utf-8'))
+            # A deterministic retry may complete without another agent lease.
+            # Do not cover its new progress/result with the last failed lease.
+            try:
+                current=datetime.fromisoformat(shared['started_at'].replace('Z','+00:00'))
+                prior=max(datetime.fromisoformat(execution[k].replace('Z','+00:00')) for k in ('started_at','updated_at','finished_at') if execution.get(k))
+                if current>prior:return job
+            except (KeyError,ValueError,TypeError):pass
             execution['stages']={**shared.get('stages',{}),**execution.get('stages',{})}
             for key in ['preparation','citation_preflight','publication_preflight','discovery','queue_seconds']:
                 if key in shared:execution[key]=shared[key]
@@ -211,6 +225,8 @@ class AgentBridge:
         atomic_json(path,{**previous,**details,'status':status,'message':message,'mode':'local_agent','resumable':id in self.recovery,'updated_at':now()})
 
     async def start(self,id,body):
+        from .skills import require_task_skill
+        require_task_skill(self.store.project,self.store.job(id)['task'])
         if self.store.job(id)['task'] in {'import_graph_papers','discover_papers','paper_relationships','verify_paper_metadata','build_knowledge','update_knowledge'}:
             # Fixed frozen-selection downloads never use a model, regardless of binding.
             # Other tasks reuse their original deterministic cache/preflight before dispatch.
@@ -227,6 +243,8 @@ class AgentBridge:
             if job['status'] in {'queued','running','completed'}:return job
             from .skills import require_task_skill
             require_task_skill(self.store.project,job['task'])
+            from .storage import prepare_figure_retry
+            prepare_figure_retry(self.store,job)
             self.store.db.execute("UPDATE jobs SET status='queued',error=NULL,revision=revision+1,updated_at=? WHERE id=?",(now(),id))
             job=self.store.job(id);self.store.event('job',id,job['revision'])
             self.routes[id]={'agent_id':self.selected['id'],'lease':None}
@@ -265,6 +283,12 @@ class AgentBridge:
 
     def guard(self,id,body,request):
         route=self.routes.get(id)
+        if not route and body.get('manual_recovery') is True:
+            self.authenticate(request)
+            job=self.store.job(id)
+            if job['task']!='replicate_paper_figure' or (self.compatibility.describe(id) or {}).get('mode')!='manual':
+                raise DomainError('agent_lease_invalid',409)
+            return
         if route:
             self.authenticate(request);self.check_agent(body)
             if route['agent_id']!=body.get('agent_id') or not route['lease'] or not secrets.compare_digest(route['lease'],body.get('lease','')):raise DomainError('agent_lease_invalid',409)
@@ -272,6 +296,7 @@ class AgentBridge:
 
     async def accepted(self,id):
         route=self.routes.pop(id,None)
+        if not route and (self.compatibility.describe(id) or {}).get('mode')=='manual':return
         job=self.store.job(id)
         elapsed=round(time.monotonic()-route['claimed_at'],2) if route and route.get('claimed_at') else None
         from .literature_results import failure_diagnostic
@@ -290,16 +315,29 @@ class AgentBridge:
             assemble(self.store,kb['id'],{'base_revision':kb['revision'],'job_id':id})
         return accepted
 
-    async def cancel(self,id):
+    async def cancel(self,id,wait=False):
         self.recovery.discard(id)
         route=self.routes.pop(id,None)
+        pending=self.stopping.get(id)
+        if route and route.get('lease'):
+            pending={**route,'stopped':asyncio.Event()};self.stopping[id]=pending
         if route:
             await self.transition(id,'interrupted','本地智能体断开或切换，执行租约已失效；请重新启动任务。')
             self.info(id,'interrupted','本次执行已中断；旧执行器不能提交结果。')
         else:await self.compatibility.cancel(id)
+        # Deletion must wait until the child has actually exited, not merely
+        # until its lease was revoked. Otherwise it could recreate output files.
+        if wait and pending:
+            try:await asyncio.wait_for(pending['stopped'].wait(),30)
+            except asyncio.TimeoutError:raise DomainError('task_cancel_failed',409)
 
-    async def claim(self,id,body):
-        if self.selected:raise DomainError('agent_worker_required',409)
+    async def claim(self,id,body,request=None):
+        if self.selected:
+            if body.get('manual_recovery') is not True or request is None:raise DomainError('agent_worker_required',409)
+            self.authenticate(request)
+            job=self.store.job(id)
+            if id in self.routes or job['task']!='replicate_paper_figure' or job['status'] not in {'failed','interrupted'}:
+                raise DomainError('agent_lease_invalid',409)
         return await self.compatibility.claim(id,body)
 
     async def fail(self,id,body):

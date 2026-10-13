@@ -14,6 +14,15 @@ from .store import uid
 from .research_policy import total_budget
 
 
+def request_timeout(path):
+    # Ingestion includes full-text acquisition, metadata enrichment and result
+    # validation. It is task execution, not a bounded control-plane request.
+    # A socket read deadline here would reintroduce a total task time limit.
+    if path.startswith('/jobs/') and path.endswith('/ingest'):
+        return None
+    return 15 if path == '/agent/heartbeat' else 180
+
+
 def launch(project, port, config_path):
     if getattr(sys,'frozen',False):argv=[sys.executable,'--cli','--project',str(project),'--port',str(port),'agent','worker','--command-file',str(config_path)]
     else:argv=[sys.executable,'-m','backend.cli','--project',str(project),'--port',str(port),'agent','worker','--command-file',str(config_path)]
@@ -49,7 +58,7 @@ def run(args):
             headers['X-KW-Token']=token;body.setdefault('operation_id',uid('op'))
         if secret:headers['X-KW-Agent-Key']=json.loads(data_path(project,'.knowledge/agent-local.json').read_text('utf-8'))['key']
         try:
-            with urllib.request.urlopen(urllib.request.Request(base+path,json.dumps(body).encode() if body is not None else None,headers),timeout=15 if path=='/agent/heartbeat' else 180) as response:return json.load(response)
+            with urllib.request.urlopen(urllib.request.Request(base+path,json.dumps(body).encode() if body is not None else None,headers),timeout=request_timeout(path)) as response:return json.load(response)
         except urllib.error.HTTPError as exc:
             error=json.load(exc);raise DomainError(error.get('code','agent_request_failed'),exc.code)
     service=None
@@ -144,6 +153,9 @@ def run(args):
                 network=str(job['context'].get('external_network','')).startswith('user_requested')
                 job_command[-1:-1]=['-c','sandbox_workspace_write.network_access='+str(network).lower()]
                 if network:job_command[-1:-1]=['-c','web_search="live"']
+                if job['task']=='paper_relationships':
+                    job_command[-1:-1]=['-c','features.multi_agent=true','-c','agents.enabled=true',
+                                       '-c','agents.max_concurrent_threads_per_session=2']
             execute(job_command,delivery['prompt'],project,output/'agent-prompt.txt',result_file,job_heartbeat,timeout)
             job_heartbeat()
             if not result_file.is_file():raise DomainError('agent_result_missing',409)
@@ -173,6 +185,9 @@ def run(args):
             except Exception:heartbeat_error.set()
         finally:
             with active_lock:active.pop(delivery['lease'],None)
+            # execute() has stopped/joined the child before acknowledging cleanup.
+            try:request('/agent/heartbeat',{'agent_id':agent_id,'finished_lease':delivery['lease']},True)
+            except Exception:pass
     try:
         while True:
             heartbeat();delivery=request('/agent/next',{'agent_id':agent_id},True)

@@ -50,17 +50,38 @@ def display(store,graph):
     records=bibliography.rows(store)
     resources=store.resources()
     from .paper_abstract import add_local_abstract
-    from .graph_fulltext import verified_resources
+    from .graph_fulltext import verified_resources,describe,summary,source_coverage
     nodes=[]
     for node in graph['nodes']:
         record=matching(node,records,store,max_age=None)
         current=apply(node,matching(node,records,store))
+        latest=(record or {}).get('pdf_status',{})
+        if 'full_text_attempts' in latest:
+            current.update({k:latest[k] for k in ('full_text_policy','full_text_attempts','full_text_sources','full_text_checked','full_text_coverage_complete','full_text_candidates','full_text_disposition','publisher_attempt') if k in latest})
+            current['full_text_reason']=latest.get('unavailable_reason')
+            if 'full_text_sources' not in latest:
+                current['full_text_sources']=source_coverage(latest['full_text_attempts'])
+                current['full_text_checked']=any(row['status'] not in {'not_checked','not_configured'}
+                    for row in current['full_text_sources'] if row['provider'] not in {'出版商账户','Sci-Hub'})
         ready=verified_resources(store,node,record)
         current['cached_resources']=[{'resource_id':r['id'],'version_id':r['version_id'],'sha256':r['sha256']} for r in ready]
         if ready:current['full_text_status']='acquired';current.pop('full_text_reason',None)
         elif current.get('full_text_status')=='acquired':current['full_text_status']='unavailable';current['full_text_reason']='saved_pdf_missing_or_changed'
+        if ready:current['full_text_candidates']=[]
+        current.update(describe(current))
+        from urllib.parse import urlencode
+        query='"'+str(current['title']).replace('"',' ')+'"'
+        current['google_scholar_verification']={'url':'https://scholar.google.com/scholar?'+urlencode({'q':query,'hl':'en'}),
+            'provider':'Google Scholar','status':'not_checked','role':'supplementary_bibliography_check',
+            'fields':['title','authors','year','doi'],'counts_separate':True}
+        from .sci_hub import access as sci_hub_access
+        current['sci_hub_access']=sci_hub_access(current.get('doi'))
+        current['full_text_sources']=[
+            {**row,'status':'not_checked','reason':'previous_run_not_checked','request_sent':False}
+            if row.get('provider')=='Sci-Hub' and row.get('reason')=='source_not_integrated' else row
+            for row in current.get('full_text_sources',source_coverage([]))]
         nodes.append(add_local_abstract(store,current,resources,record))
-    return {**graph,'nodes':nodes,'full_text_summary':{'pdf_saved':sum(bool(n['cached_resources']) for n in nodes),'pdf_missing':sum(not n['cached_resources'] for n in nodes),'abstracts':sum(bool(n.get('abstract')) for n in nodes),'total':len(nodes)}}
+    return {**graph,'nodes':nodes,'full_text_summary':summary(nodes)}
 
 
 async def enrich(store,nodes,write,domain=None,budget=45,formal=False,audit=None):
@@ -134,9 +155,39 @@ async def artifact(store,job,write,budget=45,path=None,broker=None):
     audit_path=output/'citation-audit.json'
     audit=json.loads(audit_path.read_text('utf-8-sig')) if audit_path.is_file() else None
     graph['nodes'],report=await enrich(store,graph['nodes'],write,job['context']['scope'].get('domain_id'),budget,formal=True,audit=audit)
+    plan_path=output/'pdf-source-plan.json'
+    if plan_path.is_file():
+        try:
+            if plan_path.stat().st_size>256000:raise DomainError('pdf_source_plan_invalid')
+            plan=json.loads(plan_path.read_text('utf-8-sig'))
+            if not isinstance(plan,dict) or plan.get('schema_version')!=1 or plan.get('job_id')!=job['id'] or not isinstance(plan.get('papers'),list):raise DomainError('pdf_source_plan_invalid')
+            by_id={n['id']:n for n in graph['nodes']};seen=set();prepared_changes={}
+            from .institutional_access import safe_url
+            from .research_download import repository_arxiv_id
+            for row in plan['papers']:
+                if not isinstance(row,dict):raise DomainError('pdf_source_plan_invalid')
+                key=row.get('node_id') or row.get('candidate_id')
+                if key not in by_id or key in seen:raise DomainError('pdf_source_plan_invalid')
+                seen.add(key);node=by_id[key]
+                if str(row.get('doi') or '').casefold()!=str(node.get('doi') or '').casefold():raise DomainError('pdf_source_plan_identity_conflict')
+                sources=row.get('sources',[])
+                if not isinstance(sources,list) or len(sources)>3:raise DomainError('pdf_source_plan_invalid')
+                hints=[];direct=[]
+                for source in sources:
+                    if not isinstance(source,dict):raise DomainError('pdf_source_plan_invalid')
+                    url=safe_url(source.get('access_url') or source.get('url'))
+                    if repository_arxiv_id(url):hints.append(url);continue
+                    direct.append({k:source[k] for k in ('publisher_url','access_url','pdf_version','version_basis','version_source_url','fallback_reason') if k in source})
+                    direct[-1].update(access_url=url,public_oa=True,download_permitted=True)
+                prepared_changes[key]={'repository_source_hints':hints,'download_sources':[*direct,*node.get('download_sources',[])][:3]}
+            for key,change in prepared_changes.items():by_id[key].update(change)
+            report['pdf_source_plan']={'status':'bound_to_frozen_nodes','papers':len(seen),'actual_downloads_claimed':False}
+        except (DomainError,ValueError,TypeError,KeyError) as exc:
+            # A malformed PDF plan cannot cancel verified relationship work.
+            report['pdf_source_plan']={'status':'ignored','reason':getattr(exc,'code','pdf_source_plan_invalid')}
     from .graph_fulltext import prepare
     graph['nodes'],fulltext=await prepare(store,job,graph,write,broker)
     report['full_text']=fulltext
-    graph['full_text_summary']={k:fulltext[k] for k in ('pdf_saved','pdf_missing','abstracts','total')}
+    graph['full_text_summary']={k:v for k,v in fulltext.items() if k not in {'rows','duration_seconds'}}
     atomic_json(path,graph);atomic_json(output/'publication-prefetch.json',report)
     return report

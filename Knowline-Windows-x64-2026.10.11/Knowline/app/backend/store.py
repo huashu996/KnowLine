@@ -540,6 +540,12 @@ class Store:
         if not row:raise DomainError('idea_not_found',404)
         row['resource_ids']=json.loads(row['resource_ids'])
         row['knowledge_base_ids']=json.loads(row['knowledge_base_ids'])
+        versions={r['id']:r['version_id'] for r in self.rows("SELECT id,version_id FROM resources WHERE state<>'deleted'")}
+        affected=[]
+        for prior in self.rows("SELECT id,context FROM jobs WHERE task IN ('proposal_word','proposal_ppt') AND status IN ('completed','partial') AND json_extract(context,'$.proposal.idea_id')=? ORDER BY updated_at DESC LIMIT 20",(id,)):
+            frozen=json.loads(prior['context']);changed=[r['resource_id'] for r in frozen['resources'] if versions.get(r['resource_id'])!=r['version_id']]
+            if changed:affected.append({'job_id':prior['id'],'resource_ids':changed,'status':'needs_revalidation'})
+        row['needs_revalidation']=affected
         return row
 
     def idea_fields(self,body):
@@ -1010,14 +1016,26 @@ class Store:
                 atomic_json(self.state / 'text' / (id + '-build.json'), {'code': getattr(exc, 'code', 'index_failed'), 'issues': issues})
                 return self.kb(id)
 
-    def query(self, id, question):
+    def query(self, id, question, purpose='evidence', layer_ids=None):
         kb = self.kb(id)
+        if purpose not in {'evidence','inspiration'}:raise DomainError('invalid_request')
         if kb.get('import_summary'):
             from .knowledge_import import query
             return query(self,kb,question)
         if kb.get('knowledge_state')=='organized' and kb.get('retrieval'):
-            from .knowledge_retrieval import query_index
-            return {'kb_id':id,'kb_revision':kb['revision'],'index_state':kb['index_state'],**query_index(self,kb['retrieval'],question)}
+            from .knowledge_retrieval import query_batch
+            answer=query_batch(self,kb['retrieval'],[question],purpose,layer_ids)[0]
+            if kb['retrieval'].get('schema_version')!=4:
+                from .knowledge import cards
+                allowed={c['id'] for c in cards(self,kb) if (purpose=='inspiration' or c.get('claim_type') in {'source_fact','synthesis'}) and (not layer_ids or set(layer_ids)&set(c.get('layer_ids',[c['layer_id']]))) }
+                organized=[h for h in answer['hits'] if h['card_id'] in allowed]
+                raw=self.raw_query(kb,question)['hits'];answer['hits']=[h for pair in __import__('itertools').zip_longest(organized,raw) for h in pair if h is not None][:20]
+                answer['warnings'].append('旧库已合并原文关键词检索；更新知识库后启用原文向量、主张与实验合同。')
+            return {'kb_id':id,'kb_revision':kb['revision'],'index_state':kb['index_state'],**answer}
+        return self.raw_query(kb,question)
+
+    def raw_query(self,kb,question):
+        id=kb['id']
         terms = list(dict.fromkeys(tokenize(question).split()))[:30]
         if not terms:
             return {'kb_id': id, 'index_state': kb['index_state'], 'hits': []}
@@ -1030,6 +1048,7 @@ class Store:
             WHERE kc.kb_id=? AND chunks_fts MATCH ? ORDER BY score LIMIT 20''', (id, query))
         for hit in hits:
             hit['locator'] = json.loads(hit['locator'])
+            hit.update(kind='raw_evidence',claim_type='original_source',proof_eligible=True,verification_status='source_text_not_independently_verified')
         return {'kb_id': id, 'kb_revision': kb['revision'], 'index_state': kb['index_state'], 'provider': 'local_fts5', 'hits': hits}
 
     def graph(self, id, parent=None):
@@ -1092,6 +1111,7 @@ class Store:
             source_graph=load(self,source_graph_job)
         proposal=None
         proposal_kbs=[]
+        proposal_snapshots=[]
         proposal_update={}
         if proposal_task:
             proposal=self.idea(body.get('idea_id',''))
@@ -1100,8 +1120,11 @@ class Store:
             proposal_update=prepare_proposal_update(self,proposal,body)
             proposal_kbs=[self.kb(kb_id) for kb_id in proposal['knowledge_base_ids']]
             if not proposal['resource_ids'] and not proposal_kbs:raise DomainError('proposal_sources_required')
-            if any(kb['index_state']!='ready' for kb in proposal_kbs):raise DomainError('knowledge_base_not_ready')
-            selected=list(dict.fromkeys(proposal['resource_ids']+[rid for kb in proposal_kbs for rid in kb['resource_ids']]))
+            from .proposal_evidence import snapshot as proposal_snapshot
+            proposal_snapshots=[proposal_snapshot(self,kb) for kb in proposal_kbs]
+            # Selecting authored knowledge does not implicitly select its PDFs.
+            # Only explicitly selected raw resources require original-file access.
+            selected=list(dict.fromkeys(proposal['resource_ids']))
             body={**body,'resource_ids':selected,'allow_links':True}
         discovery=body.get('task') in {'discover_papers','paper_relationships','import_graph_papers'}
         library_import=body.get('task')=='import_graph_papers' and body.get('destination')=='library'
@@ -1136,6 +1159,9 @@ class Store:
             if body.get('kb_id'):raise DomainError('scope_violation')
             target_count=body.get('target_count')
             if target_count is not None and (isinstance(target_count,bool) or not isinstance(target_count,int) or not 1<=target_count<=100):raise DomainError('invalid_request')
+            if body.get('task')=='paper_relationships':
+                instructions=body.get('search_instructions','')
+                if not isinstance(instructions,str) or len(instructions)>2000:raise DomainError('invalid_request')
         if body.get('kb_id'):
             kb = self.kb(body['kb_id'])
             if not set(ids) <= set(kb['resource_ids']):
@@ -1174,18 +1200,16 @@ class Store:
         named=lambda name:output/context['output_filenames'].get(name,name)
         if proposal_task:
             frozen=[]
-            for kb in proposal_kbs:
-                source=contained(self.project,'workspace/knowledge/'+kb['id']+'.json')
-                if not source.is_file():raise DomainError('knowledge_base_not_ready')
-                from .project_catalog import verified_snapshot
-                snapshot=verified_snapshot(self,kb)
+            for kb,snapshot in zip(proposal_kbs,proposal_snapshots):
                 destination=job_dir/(kb['id']+'-knowledge.json')
-                shutil.copyfile(source,destination)
+                atomic_json(destination,snapshot)
                 frozen.append({'id':kb['id'],'name':kb['name'],'revision':kb['revision'],'snapshot_path':destination.relative_to(self.project).as_posix(),'sha256':digest(destination),'knowledge_state':kb['knowledge_state']})
             reference=contained(self.project,'Research_Statement_Related_Research_Revised.docx',False)
             context['proposal']={'idea_id':proposal['id'],'idea_revision':proposal['revision'],'title':proposal['title'],'description':proposal['description'],'selected_resource_ids':proposal['resource_ids'],'knowledge_bases':frozen,'format':'docx' if body['task']=='proposal_word' else 'pptx','target_path':named('research-statement.docx' if body['task']=='proposal_word' else 'proposal-explainer.pptx').relative_to(self.project).as_posix(),'reference_style':{'path':reference.relative_to(self.project).as_posix(),'sha256':digest(reference)} if reference.is_file() and body['task']=='proposal_word' else None}
             context['skill']='knowline-proposal'
             context['proposal'].update(proposal_update)
+            from .research_contracts import proposal_policy
+            context['proposal']['research_policy']=proposal_policy()
             if proposal_update.get('mode')=='update':context['question']=proposal_update['update_request']
             context['allowed_actions']=['read_selected','read_frozen_knowledge','write_job_outputs']
             if proposal_update.get('mode')=='update':context['allowed_actions'].append('read_previous_proposal')
@@ -1210,7 +1234,19 @@ class Store:
                 from .research_query import plan
                 search_plan=plan(query,target_count)
                 context['literature_search'].update(search_plan=search_plan,target_count=search_plan['target_count'])
-            if body.get('task')=='paper_relationships':context['literature_search']['ranking_policy']='relevance_citations_recency'
+            if body.get('task')=='paper_relationships':
+                from .research_query import graph_plan
+                search_plan=graph_plan(query,body.get('search_instructions',''),target_count)
+                context['literature_search'].update(query=search_plan['origin_query'],search_instructions=search_plan['search_instructions'],
+                    search_plan=search_plan,target_count=search_plan['target_count'],ranking_policy='requested_venues_relevance_citations_recency',
+                    unavailable_fulltext_policy='skip_after_bounded_sources')
+                context['literature_search']['graph_preservation_policy']='retain_verified_nodes_edges_counts_when_pdf_unavailable'
+                context['literature_search']['relationship_types']=['citation','bibliographic_coupling','co_citation']
+                context['literature_search']['relationship_render_policy']='typed_evidenced_network_all_selected_pairs'
+                context['research_workstreams']={'version':1,'maximum_specialists':2,'coordinator':'single_writer_merge',
+                    'relationships':{'outputs':['paper-graph.json','citation-audit.json','network-audit.json'],'owns':['nodes','citation_edges','citation_counts']},
+                    'pdf':{'outputs':['pdf-source-plan.json','graph-fulltext-progress.json'],'owns':['pdf_sources','pdf_identity','pdf_version','acquisition']},
+                    'independent_failure':True,'review_rounds':1}
             if body.get('task') in {'discover_papers','paper_relationships'}:
                 context['literature_search']['time_budget_seconds']=None
                 context['literature_search']['search_cutoff_seconds']=None
@@ -1349,7 +1385,19 @@ class Store:
         job=self.job(id);self.check(job,body)
         if job['status'] in {'queued','running'}:raise DomainError('job_already_claimed',409)
         result=job.get('result')
-        if not result or job['task'] not in {'discover_papers','paper_relationships'}:raise DomainError('invalid_request')
+        if job['task'] not in {'discover_papers','paper_relationships'}:raise DomainError('invalid_request')
+        if not result:
+            # Direct acquisition saves its receipt before ingestion. A rejected
+            # receipt must be recoverable without downloading/claiming again.
+            # Reuse the complete ingestion gate, never just force the status.
+            if job['task']!='discover_papers' or job['status'] not in {'failed','interrupted','partial'}:raise DomainError('invalid_request')
+            output=contained(self.project,job['context']['output_dir'])
+            receipt=contained(output,'result.json')
+            if receipt.stat().st_size>2*1024*1024:raise DomainError('file_too_large')
+            result=json.loads(receipt.read_text('utf-8-sig'))
+            if not isinstance(result,dict):raise DomainError('invalid_result')
+            result['completion_audit']={'at':now(),'previous_status':job['status'],'basis':'saved_import_receipt'}
+            return self.ingest_job(id,{**body,'manifest':result})
         result=dict(result)
         if job['task']=='discover_papers':
             from .literature_results import validate,summary
@@ -1440,6 +1488,8 @@ class Store:
             if not path.is_file() or path.stat().st_size > 32 * 1024 * 1024 or digest(path) != artifact['sha256']:
                 raise DomainError('artifact_hash_mismatch')
         if job['task'] in {'proposal_word','proposal_ppt'}:
+            from .research_contracts import design as validate_research_design
+            validate_research_design(self,job,result)
             from .office_clipboard import check as check_office
             spec=job['context']['proposal']
             if spec.get('previous'):
@@ -1477,7 +1527,9 @@ class Store:
                 records=publication_rows(self)
                 saved=sum(bool(verified_resources(self,n,matching(n,records,self,max_age=None))) for n in graph['nodes'])
                 result['full_text_summary']={'pdf_saved':saved,'pdf_missing':len(graph['nodes'])-saved,'abstracts':sum(bool(n.get('abstract')) for n in graph['nodes']),'total':len(graph['nodes'])}
-                if saved<len(graph['nodes']):result['partial']=True
+                # PDF availability is a separate workstream. It must not make
+                # a verified relationship graph incomplete or remove nodes.
+                result['pdf_completion_status']='partial' if saved<len(graph['nodes']) else 'completed'
         if job['task']=='discover_papers':
             from .literature_results import validate as validate_discovery
             result['completion_status']=validate_discovery(self, job, result)
@@ -1579,11 +1631,16 @@ class Store:
         for r in job['context']['resources']:
             if digest(contained(self.project, r['snapshot_path'])) != r['sha256']:
                 raise DomainError('snapshot_corrupt')
+        proposal_evidence=None
+        if job['task'] in {'proposal_word','proposal_ppt'}:
+            from .proposal_evidence import FrozenKnowledge
+            proposal_evidence=FrozenKnowledge(self,job)
         for claim in result['claims']:
             if not claim.get('evidence'):
                 raise DomainError('evidence_required')
             for e in claim['evidence']:
-                self.validate_evidence(e, job['context']['resources'])
+                if proposal_evidence is not None:proposal_evidence.validate_any(e)
+                else:self.validate_evidence(e, job['context']['resources'])
         if job['task'] in {'build_knowledge','update_knowledge'}:
             card_ids={card['id'] for card in result['knowledge_cards']}
             knowledge_relations=[];resource_relations=[]

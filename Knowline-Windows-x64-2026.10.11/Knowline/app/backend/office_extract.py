@@ -123,6 +123,19 @@ class MathBuilder:
         if kind=='subsup':
             if not isinstance(value,list) or len(value)!=3:raise DomainError('office_math_invalid')
             return [tag(M,'sSubSup',body('e',value[0]),body('sub',value[1]),body('sup',value[2]))]
+        if kind=='pre':
+            # Left scripts share a base. One intentionally absent side is valid;
+            # never invent a parenthesis/space as a fake base or script.
+            if not isinstance(value,list) or len(value)!=3:raise DomainError('office_math_invalid')
+            lower=self.build(value[1],depth+1);upper=self.build(value[2],depth+1)
+            if not lower and not upper:raise DomainError('office_math_invalid',reason='empty_prescripts')
+            return [tag(M,'sPre',tag(M,'sub',*lower),tag(M,'sup',*upper),body('e',value[0]))]
+        if kind in {'underbrace','overbrace'}:
+            if not isinstance(value,list) or len(value)!=2:raise DomainError('office_math_invalid')
+            below=kind=='underbrace'
+            group=tag(M,'groupChr',tag(M,'groupChrPr',tag(M,'chr',val='⏟' if below else '⏞'),
+                       tag(M,'pos',val='bot' if below else 'top'),tag(M,'vertJc',val='top' if below else 'bot')),body('e',value[0]))
+            return [tag(M,'limLow' if below else 'limUpp',tag(M,'e',group),body('lim',value[1]))]
         if kind in {'sub','sup','frac','func'}:
             if not isinstance(value,list) or len(value)!=2:raise DomainError('office_math_invalid')
             if kind=='func':
@@ -142,10 +155,10 @@ class MathBuilder:
         if kind=='delim':
             if not isinstance(value,list) or len(value)!=3 or value[0] not in {'(','[','{','|','‖'} or value[2] not in {')',']','}','|','‖'}:raise DomainError('office_math_invalid')
             return [tag(M,'d',tag(M,'dPr',tag(M,'begChr',val=value[0]),tag(M,'endChr',val=value[2])),body('e',value[1]))]
-        if kind in {'sum','integral'}:
+        if kind in {'sum','integral','product'}:
             if not isinstance(value,dict) or set(value)!={'lower','upper','body'}:raise DomainError('office_math_invalid')
             lower=self.build(value['lower'],depth+1);upper=self.build(value['upper'],depth+1)
-            return [tag(M,'nary',tag(M,'naryPr',tag(M,'chr',val='∑' if kind=='sum' else '∫'),tag(M,'limLoc',val='undOvr'),tag(M,'subHide',val='0' if lower else '1'),tag(M,'supHide',val='0' if upper else '1')),tag(M,'sub',*lower),tag(M,'sup',*upper),body('e',value['body']))]
+            return [tag(M,'nary',tag(M,'naryPr',tag(M,'chr',val={'sum':'∑','integral':'∫','product':'∏'}[kind]),tag(M,'limLoc',val='undOvr'),tag(M,'subHide',val='0' if lower else '1'),tag(M,'supHide',val='0' if upper else '1')),tag(M,'sub',*lower),tag(M,'sup',*upper),body('e',value['body']))]
         if kind=='matrix':
             if not isinstance(value,list) or not value or len(value)>30 or any(not isinstance(row,list) or len(row)!=len(value[0]) for row in value) or not 1<=len(value[0])<=30:raise DomainError('office_math_invalid')
             return [tag(M,'m',*[tag(M,'mr',*[body('e',cell) for cell in row]) for row in value])]
@@ -164,6 +177,10 @@ def create_docx(content,target):
     blocks=content.get('blocks')
     if not isinstance(blocks,list) or not 1<=len(blocks)<=150:raise DomainError('office_content_limit')
     math=MathBuilder(content.get('math',{}));body=tag(W,'body');count=0
+    def expression(value):
+        # Preserve legacy named references; structured one-offs need no extra
+        # definition. Literal math strings use {"text": ...} explicitly.
+        return math.build({'ref':value} if isinstance(value,str) else value)
     for block in blocks:
         if not isinstance(block,dict) or set(block)-{'runs','equation','number','role'} or ('runs' in block)==('equation' in block):raise DomainError('office_content_invalid')
         role=block.get('role','body')
@@ -176,7 +193,7 @@ def create_docx(content,target):
             props.append(tag(W,'tabs',tag(W,'tab',val='center',pos='4873'),tag(W,'tab',val='right',pos='9746')))
             props.append(tag(W,'spacing',after='0',line='276',lineRule='auto'))
             paragraph.append(tag(W,'r',tag(W,'tab')))
-            paragraph.append(tag(M,'oMath',*math.build({'ref':block['equation']})));count+=1
+            paragraph.append(tag(M,'oMath',*expression(block['equation'])));count+=1
             number=block.get('number')
             if number is not None:
                 if not isinstance(number,str) or len(number)>20:raise DomainError('office_content_invalid')
@@ -193,7 +210,7 @@ def create_docx(content,target):
             for item in runs:
                 if isinstance(item,str):paragraph.append(text_run(item))
                 elif isinstance(item,dict) and set(item)=={'math'}:
-                    paragraph.append(tag(M,'oMath',*math.build({'ref':item['math']})));count+=1
+                    paragraph.append(tag(M,'oMath',*expression(item['math'])));count+=1
                 else:raise DomainError('office_content_invalid')
         body.append(paragraph)
     body.append(tag(W,'sectPr',tag(W,'pgSz',w='11906',h='16838'),tag(W,'pgMar',top='1296',bottom='1296',left='1080',right='1080',header='360',footer='360',gutter='0')))

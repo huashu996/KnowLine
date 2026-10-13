@@ -1,8 +1,0 @@
-/* Keep routine navigation compact; reveal provenance and technical paths on demand. */
-.job-card{padding:18px 20px}.job-card>p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;margin:5px 0 8px}.job-card .job-scope{margin:7px 0}.job-card .card-actions{margin-top:12px}.job-card .card-actions .button{padding:7px 11px;font-size:12px}.job-scope-details{border-top:1px solid #e9efeb;margin-top:10px;padding-top:8px}.job-scope-details summary{cursor:pointer;color:#71867d;font-size:12px}.job-scope-details dl{margin-top:11px}.job-results{margin-top:10px}
-.paper-relations>p.muted{font-size:12px;margin:3px 0 13px}.paper-graph-form>.button{margin-bottom:8px}.paper-import-toolbar{gap:8px;padding:9px 12px;margin-top:9px}.paper-import-toolbar select{min-width:150px}.paper-candidate{padding:11px 10px}.paper-candidate span{margin-top:3px}
-.dashboard-sidebar .nav-section-toggle .nav-caption{font-weight:700}
-/* Page titles and the graph legends already explain these views. */
-main.page-content:not(.kb-page)>.page-heading>div>p,.paper-relations>p.muted{display:none}
-.job-card-more{margin-top:9px}.job-card-more>summary{width:max-content;cursor:pointer;color:#71867d;font-size:12px;list-style:none}.job-card-more>summary::-webkit-details-marker{display:none}.job-card-more[open]>summary{margin-bottom:8px}.job-card-more .button{padding:7px 11px;font-size:12px}
-.resource-row .resource-title{cursor:pointer}.resource-row .resource-title:focus-visible{outline:2px solid #4d9172;outline-offset:2px}

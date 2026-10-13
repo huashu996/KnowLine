@@ -9,6 +9,8 @@ def require_task_skill(project,task):
     """Check the exact bundled entrypoint referenced by task instructions."""
     from .layout import app_dir
     from .safety import DomainError
+    if task=='proposal_ppt':
+        raise DomainError('task_retired',409,task=task)
     name=TASK_SKILLS.get(task)
     if name and not (app_dir(project)/'research-skills'/name/'SKILL.md').is_file():
         raise DomainError('trusted_skill_missing',409,skill=name)

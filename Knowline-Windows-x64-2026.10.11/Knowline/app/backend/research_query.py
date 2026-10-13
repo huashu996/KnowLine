@@ -76,6 +76,35 @@ def names(scope):
     return scope.get('discovery_artifacts', {'discovery': 'discovery.json', 'scholar': 'scholar-candidates.json'})
 
 
+def graph_plan(origin,instructions='',target_count=None):
+    """Keep the seed identity separate from preferences and freeform intent."""
+    seed=plan(origin,target_count)
+    notes=instructions.strip()
+    preference=plan('优先 '+notes,target_count) if notes else {}
+    venues=list(dict.fromkeys([*seed['preferred_venues'],*preference.get('preferred_venues',[])]))
+    title=seed['topic_query'] if seed['preferred_venues'] and seed['normalized'] else origin.strip()
+    return {**seed,'version':2,'origin_request':origin.strip(),'origin_query':title,
+            'search_instructions':notes,'request':origin.strip()+('\n'+notes if notes else ''),
+            'topic_query':title,'scholar_query':title,'preferred_venues':venues,
+            'preferred_publisher':preference.get('preferred_publisher') or seed.get('preferred_publisher'),
+            'normalized':title!=origin.strip(),
+            'unavailable_fulltext':'skip_after_bounded_sources',
+            'basis':'Seed identity is searched independently; venue preferences are soft and must be source verified. Freeform instructions remain in the frozen task.'}
+
+
+def graph_candidate_rank(paper,search_plan):
+    """Seed first, then requested venues; this is ranking, not identity proof."""
+    normalize=lambda value:re.sub(r'[^a-z0-9\u4e00-\u9fff]','',str(value).casefold())
+    origin=normalize(search_plan.get('origin_query',''))
+    seed=bool(origin and normalize(paper.get('title','')).startswith(origin))
+    venue=str(paper.get('venue',''))
+    wanted=search_plan.get('preferred_venues',[])
+    preferred=any(normalize(v) in normalize(venue) for v in wanted)
+    if not preferred:
+        preferred=any(name in wanted and re.search(r'(?<![a-zA-Z])'+re.escape(alias)+r'(?![a-zA-Z])',venue,re.I) for alias,name in VENUES.items())
+    return (not seed,not preferred)
+
+
 def revised_names(search_plan):
     key = hashlib.sha256(json.dumps(search_plan, sort_keys=True).encode()).hexdigest()[:16]
     return {'discovery': 'discovery-' + key + '.json', 'scholar': 'scholar-candidates-' + key + '.json'}

@@ -24,7 +24,8 @@ async def run(store,job,body,write):
         def guarded():active();return action()
         return await write(kind,clean,guarded)
     nodes=[n for n in graph['nodes'] if n['id'] in ids]
-    fetch_missing=body.get('fetch_missing') is True
+    if 'fetch_missing' in body and not isinstance(body['fetch_missing'],bool):raise DomainError('invalid_request')
+    fetch_missing=body.get('fetch_missing',True)
     hints=body.get('source_hints',{})
     if not isinstance(hints,dict) or not set(hints)<=set(ids) or (hints and not fetch_missing) or any(not isinstance(v,dict) or set(v)-{'page_url','pdf_url'} or not isinstance(v.get('pdf_url'),str) or len(v['pdf_url'])>2000 or v.get('page_url') is not None and (not isinstance(v['page_url'],str) or len(v['page_url'])>2000) for v in hints.values()):raise DomainError('scope_violation',409)
     if fetch_missing:
@@ -43,14 +44,20 @@ async def run(store,job,body,write):
         async with gate:
             active()
             if not fetch_missing and not verified_resources(store,node,bibliography_record(store,node)):
-                result={'unavailable_reason':node.get('full_text_reason') or 'pdf_not_saved'}
-            else:result=await acquire_node(store,job,node,guarded_write,broker,domain,active_check=active)
+                result={'unavailable_reason':node.get('full_text_reason') or 'pdf_not_saved','full_text_checked':False}
+            else:
+                from .graph_fulltext import PAPER_ACQUISITION_TIMEOUT_SECONDS,describe
+                try:
+                    async with asyncio.timeout(PAPER_ACQUISITION_TIMEOUT_SECONDS):
+                        result=await acquire_node(store,job,node,guarded_write,broker,domain,active_check=active)
+                except TimeoutError:result={'unavailable_reason':'paper_acquisition_timeout'}
+                result.update(describe(result))
             rows.append({'candidate_id':node['id'],'title':node['title'],**result})
     await asyncio.gather(*(one(node) for node in nodes))
     active()
     order={n['id']:i for i,n in enumerate(nodes)}
     rows.sort(key=lambda r:order[r['candidate_id']])
-    return {'status':'partial' if any(not r.get('resource_id') for r in rows) else 'completed','imported':sum(bool(r.get('resource_id')) for r in rows),'missing':sum(not r.get('resource_id') for r in rows),'rows':rows,'destination':destination,'domain_id':domain,'new_task_created':False}
+    return {'status':'partial' if any(not r.get('resource_id') for r in rows) else 'completed','imported':sum(bool(r.get('resource_id')) for r in rows),'missing':sum(not r.get('resource_id') for r in rows),'rows':rows,'fetched_missing':fetch_missing,'destination':destination,'domain_id':domain,'new_task_created':False}
 
 
 def bibliography_record(store,node):

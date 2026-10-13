@@ -52,6 +52,25 @@ def prepare_retry(store,job,manifest):
     atomic_json(store.state/'jobs'/job['id']/'last-attempt.json',{'at':now(),'previous_manifest_sha256':digest(manifest),'copies_of_source_files':0})
     os.replace(manifest,previous)
 
+def prepare_figure_retry(store,job):
+    """A public retry starts a new bounded attempt; scripts cannot reset rounds."""
+    if job.get('task')!='replicate_paper_figure' or job.get('status') not in {'failed','interrupted'}:return
+    output=contained(store.project,job['context']['output_dir'])
+    state_path=output/'figure-workflow-state.json'
+    if not state_path.exists():return
+    if state_path.stat().st_size>65536:raise DomainError('figure_state_scope_mismatch')
+    state=json.loads(state_path.read_text('utf-8-sig'))
+    if state.get('job_id')!=job['id'] or state.get('version')!=1:raise DomainError('figure_state_scope_mismatch')
+    if state.get('retry_from_revision')==job['revision']:return
+    # One prior metadata record, no duplicated PPT/source/output directory.
+    atomic_json(output/'figure-workflow.previous.json',state)
+    fresh={'version':1,'job_id':job['id'],'context_sha256':state['context_sha256'],
+           'rounds':[],'native_calls':0,'retry_from_revision':job['revision'],
+           'attempt_revision':job['revision']+1,
+           'previous_attempt':{'rounds':len(state.get('rounds',[])),
+               'native_calls':state.get('native_calls',0),'errors':[r.get('error') for r in state.get('rounds',[])]}}
+    atomic_json(state_path,fresh)
+
 def trim(path,limit):
     if not path.is_file() or path.stat().st_size<=limit:return 0
     before=path.stat().st_size

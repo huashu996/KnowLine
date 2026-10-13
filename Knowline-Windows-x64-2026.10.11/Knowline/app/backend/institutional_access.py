@@ -41,9 +41,11 @@ def safe_url(value,public_copy=False):
         if (p.scheme != 'https' and not legacy) or not host or p.username or p.password or p.port not in ({None,80} if legacy else {None,443}) or p.fragment:
             raise ValueError()
         pairs = parse_qsl(p.query,keep_blank_values=True)
-        if any(k not in {'id','doi','type','format','download','arnumber','tp','queryText','searchText','query','q','page','record','document','url'} or len(v)>(1200 if k=='url' else 200) or re.search(r'(?i)(token|ticket|password|secret|jwt|[A-Za-z0-9_-]{80,})',v) for k,v in pairs):
+        allowed={'id','doi','type','format','download','arnumber','tp','querytext','searchtext','query','q','page','record','document','url','paperid','articleid','paper_id','article_id'}
+        if any(k.lower() not in allowed or len(v)>(1200 if k.lower()=='url' else 200) or re.search(r'(?i)(token|ticket|password|secret|jwt|[A-Za-z0-9_-]{80,})',v) for k,v in pairs):
             raise ValueError()
         for key,value in pairs:
+            if key.lower() in {'paperid','articleid','paper_id','article_id'} and not re.fullmatch(r'[A-Za-z0-9._-]{1,64}',value):raise ValueError()
             if key=='url' and safe_url(value)!=value:raise ValueError()
         if re.search(r'(?i)(token|ticket|signature|password|secret|jwt|[A-Za-z0-9_-]{80,})', unquote(p.path)):
             raise ValueError()
@@ -60,7 +62,16 @@ def safe_url(value,public_copy=False):
         raise DomainError('institution_url_invalid')
 
 
-def public_destination(url, hosts, resolve=True, allow_translated=False,public_copy=False):
+def named_login_host(host):
+    """An institution's confirmed DNS name, independent of school/TLD naming."""
+    host=str(host or '').lower()
+    if '.' not in host or host.endswith(('.localhost','.local')):return False
+    try:ipaddress.ip_address(host)
+    except ValueError:return True
+    return False
+
+
+def public_destination(url, hosts, resolve=True, allow_translated=False,public_copy=False,authentication=False):
     """Ephemeral redirect URLs may contain tokens; return only a boolean, never their value."""
     try:
         p = urlsplit(str(url))
@@ -69,9 +80,16 @@ def public_destination(url, hosts, resolve=True, allow_translated=False,public_c
             return False
         if resolve:
             addresses = socket.getaddrinfo(p.hostname, 80 if legacy else 443, type=socket.SOCK_STREAM)
+            # A human may sign in on an exact, explicitly approved institution
+            # name through its LAN/VPN/proxy. No school or naming convention is
+            # assumed. Automated PDF/metadata transfers never get this exception.
+            login=authentication and named_login_host(p.hostname)
             def permitted(value):
                 address=ipaddress.ip_address(value)
-                return address.is_global or (allow_translated and address.version==4 and address in ipaddress.ip_network('198.18.0.0/15'))
+                if address.is_loopback or address.is_link_local or address.is_multicast or address.is_unspecified:return False
+                private_login=(login and address.version==4 and any(address in ipaddress.ip_network(net)
+                                for net in ('10.0.0.0/8','172.16.0.0/12','192.168.0.0/16')))
+                return address.is_global or private_login or (allow_translated and address.version==4 and address in ipaddress.ip_network('198.18.0.0/15'))
             return bool(addresses) and all(permitted(a[4][0]) for a in addresses)
         return True
     except (OSError, ValueError):
@@ -132,7 +150,13 @@ def paper_request(body, config,public_copy=False):
     if version not in VERSIONS or len(basis) > 500 or len(reason) > 500 or (version != 'unknown' and len(basis) < 12):
         raise DomainError('institution_version_basis_required')
     if re.search(r'(?i)(?:token|ticket|secret|password|signature)\s*[=:]',basis+' '+reason):raise DomainError('institution_url_invalid')
-    if version != 'published' and len(reason) < 8:
+    # An independently verified original publisher request is the primary
+    # route. Its PDF version stays unknown until the page and file prove it;
+    # lack of a fallback reason must not reject it before any transfer occurs.
+    original_publisher=(version=='unknown' and not public_copy and citation_origin
+                        and citation.get('publication_status')=='published'
+                        and publisher==citation.get('publisher_url'))
+    if version != 'published' and not original_publisher and len(reason) < 8:
         raise DomainError('institution_fallback_reason_required')
     if body.get('identity_confirmed') is not True or body.get('download_permitted') is not True:
         raise DomainError('institution_confirmation_required')
@@ -243,7 +267,16 @@ def validate_pdf(path, target):
         linked=bool(citation.get('latest_verified') and citation.get('doi')==target['doi'] and ('arxiv:'+arxiv_id in related if arxiv_id else 'doi:'+actual_doi in related))
     title_match = normalize(identity['title']) in normalize(text)
     author_text=author_text_normalize(text)
-    author_match = bool(identity.get('authors')) and all(len(normalize(author_text_normalize(a.split()[-1])))>=2 and re.search(r'(?<!\w)'+re.escape(normalize(author_text_normalize(a.split()[-1])))+r'(?:[0-9]{1,2})?(?!\w)',author_text) for a in identity['authors'])
+    def author_present(author):
+        # Crossref gives Chinese names as given-name + family-name; the PDF
+        # normally prints family-name first. Require the whole name, never
+        # a single common Han surname. Other scripts keep boundary checks.
+        parts=author.split();full=normalize(author)
+        if len(full)>=2 and re.fullmatch(r'[\u3400-\u9fff]+',full):
+            return full in normalize(text) or len(parts)==2 and normalize(parts[1]+parts[0]) in normalize(text)
+        surname=normalize(author_text_normalize(parts[-1])) if parts else ''
+        return len(surname)>=2 and re.search(r'(?<!\w)'+re.escape(surname)+r'(?:[0-9]{1,2})?(?!\w)',author_text)
+    author_match = bool(identity.get('authors')) and all(author_present(a) for a in identity['authors'])
     if not (title_match and author_match and identifier_match and linked):
         raise DomainError('institution_pdf_identity_mismatch')
     return {'doi_in_pdf':doi_match,'formal_doi_in_pdf':target['doi'] in found,'publisher_bound_identifier':publisher_bound,'official_copy_bound_identifier':official_bound,'linked_publication':linked,'pdf_identifier':('arxiv:'+arxiv_id if arxiv_id else actual_doi),'pdf_preprint_version':pdf_preprint_version, 'title_in_pdf':True, 'author_in_pdf':True, 'pages_inspected':inspected,'pdf_version':target.get('pdf_version','unknown')}
@@ -285,7 +318,8 @@ def grant_site(root,body):
         raise DomainError('institution_confirmation_required',409)
     config=json.loads((root/'config.json').read_text('utf-8'))
     origin=safe_url(approval['origin']);host=urlsplit(origin).hostname
-    if not public_destination(origin,{host},allow_translated=config.get('allow_translated_network',False)):
+    if not public_destination(origin,{host},allow_translated=config.get('allow_translated_network',False),
+                              authentication=approval.get('purpose')=='authentication_navigation'):
         raise DomainError('institution_destination_unsafe',409)
     if len(config['allowed_origins'])>=40:raise DomainError('institution_scope_invalid')
     config['allowed_origins']=sorted(set(config['allowed_origins']+[origin]))
@@ -352,7 +386,7 @@ class InstitutionalSession:
                 state.update(state='awaiting_test',reason='session_saved_needs_recheck')
             return {'config':config,'online':online,**state,'login_reported_at':reported,'verified_pdf':verification,
                 'authentication_confirmed':bool(online and connection.get('confirmed') and state.get('state') not in {'awaiting_login','expired','unconfigured'} and not state.get('approval') and not state.get('challenge_requires_user') and 'requires_user' not in state.get('reason','') and state.get('reason') not in {'browser_starting','browser_process_failed','browser_event_failed','browser_action_failed','webview2_unavailable'}),
-                'task_ready':bool(config and state.get('state') in {'awaiting_test','verified'} and not state.get('approval') and not state.get('challenge_requires_user') and 'requires_user' not in state.get('reason','') and state.get('reason') not in {'subscription_denied','redirect_scope_blocked','browser_starting','browser_process_failed','browser_event_failed','browser_action_failed','webview2_unavailable'})}
+                'task_ready':bool(config and state.get('state') in {'awaiting_test','verified'} and not state.get('approval') and not state.get('challenge_requires_user') and 'requires_user' not in state.get('reason','') and state.get('reason') not in {'subscription_denied','redirect_scope_blocked','browser_starting','browser_process_failed','browser_event_failed','browser_action_failed','webview2_unavailable','webview2_initialization_timeout','institution_destination_unsafe','login_navigation_failed','login_open_timeout'})}
 
     def configure(self, body):
         value = configuration(body)
@@ -401,8 +435,14 @@ class InstitutionalSession:
             config=self.read('config.json',None)
             if not config:
                 raise DomainError('institution_configuration_required')
+            # Recreate only a failed owned renderer, keeping the same profile.
+            # Showing a dead WebView again cannot recover a sign-in entry.
+            prior=self.status()
+            if (self.process and self.process.poll() is None and not prior.get('pending') and not prior.get('pdf_ready')
+                    and prior.get('reason') in {'browser_process_failed','webview2_unavailable','webview2_initialization_timeout'}):
+                self.close_worker()
             # Preserve existing profiles while supporting official HTTPS hosts
-            # mapped to the proxy fake-IP range; loopback/LAN remain blocked.
+            # mapped to the proxy fake-IP range. Login and transfers use separate rules.
             changed=config.get('allow_translated_network') is not True
             if changed:
                 config['allow_translated_network']=True
@@ -513,7 +553,8 @@ class InstitutionalSession:
             try:path.unlink()
             except OSError:raise DomainError('institution_clear_pending',409)
 
-    def clear(self):
+    def close_worker(self):
+        """Close only our helper; retain its config, profile and authentication."""
         with self.lock:
             if self.process and self.process.poll() is None:
                 self.command('close')
@@ -524,6 +565,10 @@ class InstitutionalSession:
                     self.process.terminate()
                     self.process.wait(timeout=5)
             self.process = None
+
+    def clear(self):
+        with self.lock:
+            self.close_worker()
             self.discard_staged()
             if self.root.exists():
                 # Fixed instance/user leaf, checked before any recursive deletion.

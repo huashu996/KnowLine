@@ -96,7 +96,8 @@ def query(store,kb,question):
  for card in cards(store,kb):
   text=(card['title']+' '+card['content']+' '+' '.join(card.get('tags',[]))).casefold()
   if words and all(w in text for w in words):hits.append({'id':card['id'],'card_id':card['id'],'title':card['title'],'text':card['content'],'kind':'imported_knowledge','score':sum(text.count(w) for w in words),'imported_source':card['imported_sources'][0],'locator':{}})
- return {'kb_id':kb['id'],'kb_revision':kb['revision'],'provider':'imported_knowledge_text_search','hits':sorted(hits,key=lambda h:-h['score'])[:20],'warnings':['按已有知识文字匹配，尚未接入原库语义向量。']}
+ for hit in hits:hit.update(proof_eligible=False,verification_status='imported_requires_original_source_check',requires_primary_source_check=True)
+ return {'kb_id':kb['id'],'kb_revision':kb['revision'],'provider':'imported_knowledge_text_search','hits':sorted(hits,key=lambda h:-h['score'])[:20],'warnings':['按已有知识文字匹配，尚未接入原库语义向量；未经原文核验的导入知识不能充当事实证据。']}
 
 def source_document(store,id,document_id):
  kb=store.kb(id)

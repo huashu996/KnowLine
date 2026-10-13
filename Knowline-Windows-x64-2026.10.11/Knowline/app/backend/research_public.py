@@ -13,14 +13,16 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from .paper_bibliography import stamp
 from .safety import atomic_json, contained
 
 MAX_BYTES = 2 * 1024 * 1024
-HOSTS = {'api.crossref.org', 'api.semanticscholar.org', 'api.openalex.org'}
+HOSTS = {'api.crossref.org', 'api.semanticscholar.org', 'api.openalex.org', 'api.github.com'}
 _lock = threading.Lock()
+_provider_locks={host:threading.Lock() for host in HOSTS}
 _next_request = {}
 _cooldown = {}
 _cache = OrderedDict()  # At most four bounded responses; original dates retained.
@@ -54,17 +56,18 @@ def fetch(url):
     host = target.hostname
     if host not in HOSTS or target.scheme != 'https' or target.username or target.password or target.port not in {None, 443}:
         raise ValueError('public_api_source_not_allowed')
-    with _lock:
+    with _provider_locks[host]:
         current = time.monotonic()
         if _cooldown.get(host, 0) > current:
             return {'url': url, 'retrieved_at': stamp(), 'status': 'rate_limited',
                     'http_status': 429, 'request_sent': False,
                     'retry_after_seconds': round(_cooldown[host] - current)}
-        cached = _cache.get(url)
-        if cached and current - cached[0] < 300:
-            _cache.move_to_end(url)
-            return {**copy.deepcopy(cached[1]), 'reused_verified_response': True,
-                    'request_sent': False}
+        with _lock:
+            cached = _cache.get(url)
+            if cached and current - cached[0] < 300:
+                _cache.move_to_end(url)
+                return {**copy.deepcopy(cached[1]), 'reused_verified_response': True,
+                        'request_sent': False}
         delay = _next_request.get(host, 0) - current
         if delay > 0:
             time.sleep(min(1, delay))
@@ -85,9 +88,10 @@ def fetch(url):
                 record.update(status='ok', http_status=response.status, response=redact_links(data),
                               stored_urls_without_query=True,
                               response_sha256=hashlib.sha256(raw).hexdigest())
-                _cache[url] = (time.monotonic(), copy.deepcopy(record))
-                while len(_cache) > 4:
-                    _cache.popitem(last=False)
+                with _lock:
+                    _cache[url] = (time.monotonic(), copy.deepcopy(record))
+                    while len(_cache) > 4:
+                        _cache.popitem(last=False)
         except urllib.error.HTTPError as exc:
             record.update(status='rate_limited' if exc.code == 429 else 'source_unavailable',
                           http_status=exc.code)
@@ -183,8 +187,11 @@ def discover(store, job, scholar):
         ('Semantic Scholar', 'https://api.semanticscholar.org/graph/v1/paper/search?' + urllib.parse.urlencode({
             'query': query, 'limit': limit, 'fields': 'title,authors,year,venue,externalIds,url,citationCount'}))]
     responses, papers, identities = [], [], set()
-    for provider, url in sources:
-        record = fetch(url)
+    # Independent public APIs can run together; per-provider locks preserve
+    # throttling/cooldown while the catalog still has only one writer.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        records=list(pool.map(fetch,[url for _,url in sources]))
+    for (provider, url), record in zip(sources,records):
         record['provider'] = provider
         responses.append(record)
         for paper in candidates(provider, record, limit):
@@ -194,6 +201,9 @@ def discover(store, job, scholar):
                 papers.append(paper)
                 identities.add(identity)
     if quota:papers=papers[:limit]
+    elif plan:
+        from .research_query import graph_candidate_rank
+        papers=sorted(papers,key=lambda paper:graph_candidate_rank(paper,plan))
     browser_only = scholar.get('status') == 'browser_only'
     reason = ('Automatic discovery uses the authorized official citation APIs; Google Scholar is available through its normal website.'
               if browser_only else 'Google Scholar returned HTTP 429; user-authorized official public citation APIs supplement discovery.')
@@ -208,6 +218,7 @@ def discover(store, job, scholar):
               'warnings': ([] if browser_only else ['Google 学术本轮返回 429；使用经用户允许的 Crossref / Semantic Scholar 公开接口补充，未重试 Google。']) + [
                            '候选需核对身份与主题；公开数据库的覆盖范围不同，不能混合引用次数或凭搜索结果推断引用边。']}
     report['duration_seconds'] = round(time.monotonic() - started, 3)
+    if plan:report['search_plan']=plan
     from .research_query import names, public_response_name
     atomic_json(output / public_response_name(scope), {'responses': responses, 'fallback_reason': reason})
     atomic_json(output / names(scope)['discovery'], report)

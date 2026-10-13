@@ -30,6 +30,16 @@ def challenge_resource(uri):
     return p.scheme=='https' and not p.username and not p.password and p.port in {None,443} and host.endswith(('.token.awswaf.com','.captcha.awswaf.com','.sdk.awswaf.com')) and p.path.lower().endswith(('/challenge.js','/captcha.js'))
 
 
+def readiness_result(flags, challenged=False):
+    """Observe human-completed login; never submit or bypass a challenge."""
+    if flags.get('loading') or flags.get('challenge'):return None
+    confirmed=bool(flags.get('authenticated') and not flags.get('login'))
+    # Mere disappearance of an iframe is not evidence of challenge completion.
+    if challenged and not confirmed:return None
+    return ('awaiting_login','sign_in_required',False) if flags.get('login') else (
+        'awaiting_test','authenticated_session_ready' if confirmed else 'session_ready_for_tasks',confirmed)
+
+
 def publisher_version(target, data, page_url):
     """Identify IEEE's original PDF only from a matching formal article page."""
     record=target.get('citation_record') or {}
@@ -45,6 +55,14 @@ def publisher_version(target, data, page_url):
             version_source_url=safe_url(page_url),fallback_reason='')
         return True
     return False
+
+
+LOGIN_RECOVERY_REASONS={'institution_destination_unsafe','login_navigation_failed','login_open_timeout'}
+
+
+def reopen_login_entry(current_url,reason,target_active=False):
+    """Restore a failed/blank entry; keep an in-progress sign-in/challenge intact."""
+    return not target_active and (str(current_url) in {'','about:blank'} or reason in LOGIN_RECOVERY_REASONS)
 
 
 def run(root):
@@ -153,14 +171,18 @@ def run(root):
         atomic_json(root/'connection.json',{'confirmed':False})
 
         def open_entry(entry=None):
-            nonlocal opening_at,login_entry,challenge_blocked,blocked_navigation
+            nonlocal opening_at,login_entry,challenge_blocked,blocked_navigation,page_loaded,readiness_due,readiness_task
             if entry is not None:login_entry=entry
+            stop_download()
             challenge_blocked=False
             blocked_navigation=None
+            page_loaded=False;readiness_due=None;readiness_task=None
             confirmation_button.Visible=False
             opening_at=time.monotonic()
+            status('awaiting_login','user_login_required')
             explain('Opening the official website…' if en else '正在打开官方网站…')
-            browser.CoreWebView2.Navigate(login_entry)
+            if str(browser.CoreWebView2.Source)==login_entry:browser.CoreWebView2.Reload()
+            else:browser.CoreWebView2.Navigate(login_entry)
 
         def show():
             if launch.get('interactive') is False:return # Isolated synthetic test harness only.
@@ -174,7 +196,7 @@ def run(root):
             form.Activate()
             # Restored/hidden workers deliberately initialize on about:blank.
             # Bringing one forward must open its configured entry in the same profile.
-            if ready and target is None and str(browser.CoreWebView2.Source) in {'','about:blank'}:
+            if ready and reopen_login_entry(str(browser.CoreWebView2.Source),last_state.get('reason'),target is not None):
                 open_entry()
 
         # Fixed selectors, no arbitrary model-provided JavaScript. Authentication
@@ -219,6 +241,9 @@ def run(root):
                 'official_page_loaded':('Official page loaded. Each paper still needs an access check.','官方网站已加载；各篇论文的访问权限仍需分别核验。'),
                 'browser_ready':('Session ready. Connect opens the official page.','会话已准备，连接后打开官方网站。'),
                 'login_navigation_failed':('Official page failed to load. Use Home / login to retry.','官方网站未能加载，请点击“返回官方登录”重试。'),
+                'institution_destination_unsafe':('This destination is outside the confirmed login scope or network range. Use Home / login to retry.','登录目标超出已确认的站点或网络范围，请返回官方登录入口重试。'),
+                'login_open_timeout':('Official page timed out. Connect again or use Home / login to retry.','官方网站加载超时，可再次连接或返回官方登录入口重试。'),
+                'webview2_initialization_timeout':('Login browser timed out. Reconnect to restore it with your existing session.','登录浏览器初始化超时，请再次连接；现有会话会保留。'),
                 'browser_process_failed':('Browser rendering stopped; close and reconnect.','浏览器渲染已停止，请关闭窗口后重新连接。')}
             label.Text = readable.get(reason,(state+' · '+reason,state+' · '+reason))[0 if en else 1]
 
@@ -314,7 +339,8 @@ def run(root):
         button('Access help' if en else '访问帮助',help_click)
 
         def allowed(uri):
-            return public_destination(str(uri),hosts,allow_translated=config.get('allow_translated_network',False))
+            return public_destination(str(uri),hosts,allow_translated=config.get('allow_translated_network',False),
+                                      authentication=target is None)
 
         def blocked(uri):
             nonlocal blocked_navigation
@@ -324,7 +350,7 @@ def run(root):
                 origin=confirmation_origin(uri)
                 if p.hostname in hosts:
                     status(last_state['state'],'institution_destination_unsafe',blocked_site=p.hostname)
-                    explain('The official page did not finish loading. Return to the sign-in entry to retry; the cause is unconfirmed.' if en else '官方网站加载未完成，可返回登录入口重试；具体原因尚未确认。')
+                    explain('This destination does not match the confirmed login scope or network range. Return to the official entry or check your institution network settings.' if en else '此目标不符合已确认的登录站点或网络范围。请返回官方入口或检查机构网络配置。')
                     return
                 approval={'id':str(uuid.uuid4()),'origin':origin,'purpose':'authentication_navigation' if resume else 'paper_navigation'}
                 blocked_navigation={'id':approval['id'],'uri':str(uri),'resume':resume}
@@ -414,6 +440,8 @@ def run(root):
                 if last_state.get('approval'):return
                 if challenge_blocked:
                     status('awaiting_test','challenge_requires_user')
+                    if args.IsSuccess:
+                        page_loaded=True;readiness_due=time.monotonic()+1
                     return
                 if (not args.IsSuccess and str(args.WebErrorStatus)!='OperationCanceled') or int(args.HttpStatusCode)>=400:
                     # A failed article navigation does not invalidate an already
@@ -424,7 +452,8 @@ def run(root):
                     status('awaiting_test','challenge_requires_user')
                 elif args.IsSuccess and str(browser.CoreWebView2.Source)!='about:blank' and not last_state.get('approval'):
                     notice.Visible=False
-                    status(last_state['state'],'official_page_loaded',**{k:v for k,v in last_state.items() if k not in {'state','reason'}})
+                    details={k:v for k,v in last_state.items() if k not in {'state','reason','login_site','page_loaded_at'}}
+                    status(last_state['state'],'official_page_loaded',login_site=urlsplit(str(browser.CoreWebView2.Source)).hostname,page_loaded_at=stamp(),**details)
                     page_loaded=True;readiness_due=time.monotonic()+.5
                 return
             code = int(args.HttpStatusCode)
@@ -570,14 +599,17 @@ def run(root):
             if hidden:form.Hide()
 
         def tick(sender,args):
-            nonlocal seen,target,started,pending_stream,navigation_failure,metadata_task,metadata_due,metadata_started,pdf_followed,pdf_destinations,readiness_task,readiness_due,readiness_navigation,challenge_blocked,blocked_navigation,connection_confirmed
+            nonlocal seen,target,started,pending_stream,navigation_failure,metadata_task,metadata_due,metadata_started,pdf_followed,pdf_destinations,readiness_task,readiness_due,readiness_navigation,challenge_blocked,blocked_navigation,connection_confirmed,opening_at
             try:
                 if not ready and time.monotonic()-initializing_at>30:
+                    if last_state.get('reason')!='webview2_initialization_timeout':status('awaiting_login','webview2_initialization_timeout')
                     explain('Browser initialization is taking too long. Close this window and reconnect.' if en else '登录浏览器初始化超时，请关闭此窗口后重新连接。')
                 elif opening_at and time.monotonic()-opening_at>30:
+                    opening_at=None
+                    status('awaiting_login','login_open_timeout')
                     explain('The official page is still loading. Check the network or proxy, then use Home / login to retry.' if en else '官方网站加载超时。请检查网络或代理，再点击“返回官方登录”重试。')
-                if (page_loaded and target is None and not last_state.get('approval') and not challenge_blocked
-                        and last_state.get('reason') in {'official_page_loaded','sign_in_required','session_ready_for_tasks','authenticated_session_ready'}):
+                if (page_loaded and target is None and not last_state.get('approval')
+                        and last_state.get('reason') in {'official_page_loaded','sign_in_required','session_ready_for_tasks','authenticated_session_ready','challenge_requires_user'}):
                     if readiness_task is None and readiness_due and time.monotonic()>=readiness_due:
                         readiness_navigation=navigation_id
                         readiness_task=browser.CoreWebView2.ExecuteScriptAsync(READINESS_SCRIPT)
@@ -591,15 +623,15 @@ def run(root):
                                 connection_confirmed=False
                                 atomic_json(root/'connection.json',{'confirmed':False})
                                 status('awaiting_test','challenge_requires_user')
-                            elif not flags.get('loading'):
-                                state,reason=('awaiting_login','sign_in_required') if flags.get('login') else ('awaiting_test','session_ready_for_tasks')
-                                confirmed=bool(flags.get('authenticated') and not flags.get('login'))
-                                if confirmed:reason='authenticated_session_ready'
+                            elif (observed:=readiness_result(flags,challenge_blocked or last_state.get('reason')=='challenge_requires_user')) is not None:
+                                state,reason,confirmed=observed
+                                challenge_blocked=False
                                 if confirmed!=connection_confirmed:
                                     atomic_json(root/'connection.json',{'confirmed':confirmed,'checked_at':stamp(),'basis':'visible_sign_out_control' if confirmed else 'sign_in_check'})
                                     connection_confirmed=confirmed
                                 if last_state.get('state')!='verified' or flags.get('login'):
-                                    if (last_state.get('state'),last_state.get('reason'))!=(state,reason):status(state,reason,authentication_confirmed=confirmed)
+                                    if (last_state.get('state'),last_state.get('reason'))!=(state,reason):
+                                        status(state,reason,authentication_confirmed=confirmed,**{k:last_state[k] for k in ['login_site','page_loaded_at'] if k in last_state})
                 if metadata_due and time.monotonic()>metadata_due and target and metadata_task is None and operation is None and pending_stream is None:
                     metadata_due=None
                     metadata_task=browser.CoreWebView2.ExecuteScriptAsync(metadata_script)

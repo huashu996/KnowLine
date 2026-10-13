@@ -1,9 +1,9 @@
 """Current, independently verified citation records. PDF outcomes never choose citations."""
 import asyncio,json,re,uuid,time,xml.etree.ElementTree as ET
+import urllib.request,urllib.error
 from datetime import datetime,timezone
 from urllib.parse import quote
-import httpx
-from .safety import DomainError,json_text,hash_bytes,atomic_json,digest
+from .safety import DomainError,json_text,hash_bytes,atomic_json,digest,contained
 _gate=asyncio.Semaphore(2)
 _rate=asyncio.Lock()
 _last={}
@@ -40,16 +40,35 @@ def same_identity(a,b):
     aa=[norm(v) for v in a.get('authors',[])];bb=[norm(v) for v in b.get('authors',[])]
     return bool(a.get('title') and b.get('title') and norm(a['title'])==norm(b['title']) and aa and aa==bb)
 
+def declared_author_identity(left,right):
+    """Supporting author evidence only after an original declared DOI edge."""
+    from .research_download import author_name_matches
+    return bool(left and right and len(left)==len(right)
+                and all(author_name_matches(a,b) for a,b in zip(left,right)))
+
 async def _fetch(url):
     # Fixed public metadata APIs only. No institution credentials, HTML or arbitrary redirects.
-    async with httpx.AsyncClient(timeout=15,follow_redirects=False,trust_env=False) as client:
-        async with client.stream('GET',url,headers={'User-Agent':'Knowline citation verification/1.0','Accept':'application/json,application/atom+xml'}) as response:
-            if response.status_code!=200:raise DomainError('citation_source_unavailable',502,http_status=response.status_code)
-            data=bytearray()
-            async for chunk in response.aiter_bytes():
-                data.extend(chunk)
-                if len(data)>2*1024*1024:raise DomainError('citation_source_invalid')
-            return bytes(data)
+    from urllib.parse import urlsplit
+    target=urlsplit(url)
+    if target.scheme!='https' or target.hostname not in {'api.crossref.org','export.arxiv.org'} or target.username or target.password or target.port not in {None,443}:
+        raise DomainError('citation_source_invalid')
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self,*args,**kwargs):return None
+    def read():
+        # The packaged asyncio TLS transport fails on some Windows installations.
+        # Use the same system-trusted HTTPS stack as public discovery, without
+        # disabling certificate/hostname checks or forwarding browser sessions.
+        if target.hostname=='export.arxiv.org':
+            from .research_download import public_opener
+            opener=public_opener(NoRedirect())
+        else:opener=urllib.request.build_opener(NoRedirect())
+        request=urllib.request.Request(url,headers={'User-Agent':'Knowline citation verification/1.0','Accept':'application/json,application/atom+xml'})
+        with opener.open(request,timeout=15) as response:
+            if response.status!=200:raise DomainError('citation_source_unavailable',502,http_status=response.status,request_sent=True)
+            data=response.read(2*1024*1024+1)
+            if len(data)>2*1024*1024:raise DomainError('citation_source_invalid')
+            return data
+    return await asyncio.to_thread(read)
 async def fetch(url):
     try:
         async with _gate:
@@ -59,7 +78,8 @@ async def fetch(url):
                 if delay>0:await asyncio.sleep(delay)
                 _last[host]=time.monotonic()
             return await _fetch(url)
-    except httpx.HTTPError:raise DomainError('citation_source_unavailable',502,reason='network_error')
+    except urllib.error.HTTPError as exc:raise DomainError('citation_source_unavailable',502,http_status=exc.code,request_sent=True)
+    except (urllib.error.URLError,OSError):raise DomainError('citation_source_unavailable',502,reason='network_error',request_sent=True)
 
 def crossref(work,checked):
     identifier=doi(work.get('DOI'));kind=FORMAL.get(work.get('type'))
@@ -82,6 +102,40 @@ def crossref(work,checked):
     record['relation']=work.get('relation',{})
     if work.get('abstract'):record['abstract']=plain_abstract(work['abstract'])
     record['metadata_status']='verified' if kind and record['title'] and record['authors'] and record['year'] and record['venue'] else 'partially_verified'
+    # Exact DOI registrations may contain the direct publisher PDF even when
+    # the article page/index is unavailable. Such links remain candidates until
+    # their actual PDF title, authors and identifier have all been verified.
+    from .official_copy import canonical_link
+    # Registration of a PDF URL is not an OA grant. Retain an explicit,
+    # currently effective CC licence separately from the download candidate.
+    oa_licenses=[]
+    for license in work.get('license',[])[:10]:
+        url=str(license.get('URL') or '') if isinstance(license,dict) else ''
+        if not re.match(r'https?://(?:www\.)?creativecommons\.org/(?:licenses/|publicdomain/)',url,re.I):continue
+        start=str((license.get('start') or {}).get('date-time') or '')
+        if start and start[:10]>checked[:10]:continue
+        oa_licenses.append({'url':url,'content_version':license.get('content-version'),'source_url':record['source_url']})
+    record['open_access_verified']=any(v['content_version'] in {None,'vor','unspecified'} for v in oa_licenses)
+    if oa_licenses:record['open_access_evidence']=oa_licenses
+    sources=[];bindings=[]
+    for link in work.get('link',[])[:10]:
+        if len(sources)>=3:break
+        if not isinstance(link,dict):continue
+        raw=link.get('URL','')
+        if link.get('content-type')!='application/pdf' and not re.search(r'\.pdf(?:$|[?#])|/_pdf(?:$|[?#])',str(raw),re.I):continue
+        try:pdf_url=safe_url(canonical_link(raw))
+        except (DomainError,ValueError,TypeError):continue
+        version={'vor':'published','am':'accepted_manuscript'}.get(link.get('content-version'),'unknown')
+        open_copy=record['open_access_verified'] or any(v['content_version']==link.get('content-version') for v in oa_licenses)
+        bindings.append({'doi':identifier,'title':record['title'],'authors':record['authors'],'pdf_url':pdf_url,
+                         'source_url':record['source_url'],'declared_pdf_url':raw,'retrieved_at':checked,
+                         'match_basis':'registered_doi_pdf_link_candidate_only'})
+        sources.append({'publisher_url':record['publisher_url'],'access_url':pdf_url,'public_oa':bool(open_copy),'open_access_verified':bool(open_copy),'download_permitted':True,
+                        'pdf_version':version,'version_source_url':record['source_url'],
+                        'version_basis':'Exact DOI registration PDF link content-version: '+str(link.get('content-version') or 'unknown'),
+                        'fallback_reason':'Exact DOI registry PDF link; only explicit OA evidence permits anonymous download',
+                        'pdf_identity':{k:record[k] for k in ('title','authors','doi')}})
+    if sources:record.update(public_download_sources=sources,public_copy_bindings=bindings)
     return record
 
 async def resolve(identifier=None,arxiv_id=None):
@@ -118,7 +172,7 @@ async def resolve(identifier=None,arxiv_id=None):
                     record['formal_doi_unverified']=doi(formal);record['formal_record_status']='source_unavailable';record['metadata_status']='partially_verified';publication=None
                 # The repository DOI relationship and author agreement allow changed final titles.
                 if publication:
-                    if not publication.get('authors') or [norm(v) for v in publication['authors']]!=[norm(v) for v in record['authors']]:raise DomainError('citation_identity_conflict',409)
+                    if not declared_author_identity(publication.get('authors'),record['authors']):raise DomainError('citation_identity_conflict',409)
                     related=['arxiv:'+key];record=publication
             else:
                 # A repository may omit the subsequently published DOI. Only an
@@ -151,7 +205,7 @@ async def resolve(identifier=None,arxiv_id=None):
         if len(links)>1:raise DomainError('citation_relation_ambiguous',409)
         if not links:break
         previous=record;new=await load(links[0]['id'])
-        if not new.get('authors') or [norm(v) for v in new['authors']]!=[norm(v) for v in previous['authors']]:raise DomainError('citation_identity_conflict',409)
+        if not declared_author_identity(new.get('authors'),previous['authors']):raise DomainError('citation_identity_conflict',409)
         related.extend([previous['identity_key'],*previous.get('related_identifiers',[])]);record=new
     if record['publication_status']=='preprint' and not arxiv_id:
         # Current DOI metadata alone cannot prove a repository's latest preprint version.
@@ -174,6 +228,27 @@ def get(store,identifier):
         if not record.get('alias_of'):return record
         identifier=record['alias_of']
     raise DomainError('citation_relation_invalid',409)
+def _primary_arxiv_keys(record):
+    """Original verified repository evidence, separate from inherited aliases."""
+    from .research_download import _arxiv_key,repository_arxiv_id
+    aliases={_arxiv_key(value[6:]) for value in record.get('related_identifiers',[]) if value.startswith('arxiv:')}
+    keys=set()
+    for item in record.get('evidence',[]):
+        if not isinstance(item,dict):continue
+        key=_arxiv_key(item.get('arxiv_id') or str(item.get('identity_key','')).removeprefix('arxiv:'))
+        if not key or key not in aliases:continue
+        if not any(repository_arxiv_id(item.get(name))==key for name in ('url','source_url')):continue
+        if item.get('formal_doi') and str(item['formal_doi']).casefold()!=str(record.get('doi','')).casefold():continue
+        relationship=item.get('relationship')
+        primary=relationship in {'repository_declared_doi','existing_verified_identifier_link','exact_title_all_authors_unique_repository_record'}
+        if relationship=='exact_title_all_authors_unique_repository_record' and not same_identity(item,record):continue
+        # resolve() also retains its original repository metadata record.
+        primary=primary or bool(item.get('publication_status')=='preprint' and item.get('latest_verified')
+            and item.get('preprint_version') and [norm(a) for a in item.get('authors',[])]==[norm(a) for a in record.get('authors',[])])
+        if primary:keys.add(key)
+    return keys
+
+
 def save(store,record,domain_id=None):
     if not record.get('latest_verified') or not fresh(record.get('latest_checked_at')):raise DomainError('citation_refresh_required',409)
     if record['publication_status']=='preprint' and not record.get('preprint_version'):raise DomainError('citation_latest_preprint_unverified',409)
@@ -199,16 +274,44 @@ def save(store,record,domain_id=None):
         allowed={b['pdf_url'] for b in record['public_copy_bindings']}
         sources=[s for r in [*matches,record] for s in r.get('public_download_sources',[]) if s.get('access_url') in allowed]
         record['public_download_sources']=list({s['access_url']:s for s in [*sources,*record.get('public_download_sources',[])]}.values())[-3:]
+    repositories=[b for r in [*matches,record] for b in r.get('repository_bindings',[])
+                  if b.get('doi')==record.get('doi') and norm(b.get('title',''))==norm(record['title'])
+                  and b.get('authors')==record['authors'] and b.get('match_basis')=='exact_paper_repository_page']
+    if repositories:
+        record['repository_bindings']=list({tuple(b['repository']):b for b in repositories}.values())[-6:]
+        from urllib.parse import urlsplit
+        allowed={tuple(b['repository']) for b in record['repository_bindings']}
+        sources=[s for r in [*matches,record] for s in r.get('public_download_sources',[])
+                 if urlsplit(s.get('access_url','')).hostname in {'github.com','raw.githubusercontent.com'}
+                 and tuple(urlsplit(s.get('access_url','')).path.strip('/').split('/')[:2]) in allowed]
+        record['public_download_sources']=list({s['access_url']:s for s in [*sources,*record.get('public_download_sources',[])]}.values())[-3:]
     evidence={k:record[k] for k in [*FIELDS,'publication_status','source_url','latest_checked_at','related_identifiers'] if k in record}
     evidence['identity_evidence']=record.get('evidence',[])
     if record.get('public_copy_bindings'):evidence['public_copy_bindings']=record['public_copy_bindings']
-    # Keep a bounded audit trail for previously verified cross-version bridges.
-    bridge_evidence=list(dict.fromkeys([p for r in matches for p in r.get('bridge_evidence_paths',[])]))
-    if existing and set(record['related_identifiers'])!=set(existing.get('related_identifiers',[])):
-        bridge_evidence.extend(r['evidence_path'] for r in matches if r.get('evidence_path'))
+    if record.get('repository_bindings'):evidence['repository_bindings']=record['repository_bindings']
+    if 'open_access_verified' in record:evidence['open_access_verified']=record['open_access_verified']
+    if record.get('open_access_evidence'):evidence['open_access_evidence']=record['open_access_evidence']
+    # Keep the snapshot containing the actual repository bridge even if this
+    # refresh has the same alias set. The snapshot before an alias was added
+    # cannot supply that evidence. Fresh formal metadata never redates it.
+    stable=[r for r in matches if record.get('doi') and r.get('doi')==record['doi'] and same_identity(r,record)]
+    bridge_evidence=list(dict.fromkeys(p for r in stable for p in r.get('bridge_evidence_paths',[])))
+    for prior in stable:
+        if not prior.get('evidence_path') or not _primary_arxiv_keys(prior):continue
+        try:
+            previous_path=contained(store.project,prior['evidence_path'])
+            address=re.fullmatch(r'citation-([0-9a-f]{64})\.json',previous_path.name)
+            if (not address or previous_path.stat().st_size>2*1024*1024
+                    or address[1]!=prior.get('evidence_sha256') or digest(previous_path)!=address[1]):continue
+            bridge_evidence.append(prior['evidence_path'])
+        except (OSError,ValueError,DomainError):continue
     evidence['bridge_evidence_paths']=list(dict.fromkeys(bridge_evidence))[-20:]
+    from .research_download import _arxiv_key
+    current_repository_keys=_primary_arxiv_keys(record)
+    inherited=[value for value in record['related_identifiers'] if value.startswith('arxiv:') and _arxiv_key(value[6:]) not in current_repository_keys]
+    evidence['inherited_related_identifiers']=inherited
     sha=hash_bytes(json_text(evidence).encode());path=store.state/'metadata-sources'/('citation-'+sha+'.json');atomic_json(path,evidence)
-    value={**record,'bridge_evidence_paths':evidence['bridge_evidence_paths'],'id':identifier,'domain_ids':domains,'resource_ids':list(dict.fromkeys(v for r in matches for v in r.get('resource_ids',[]))),'pdf_status':(existing or {}).get('pdf_status',{'status':'not_requested'}),
+    value={**record,'bridge_evidence_paths':evidence['bridge_evidence_paths'],'inherited_related_identifiers':inherited,'id':identifier,'domain_ids':domains,'resource_ids':list(dict.fromkeys(v for r in matches for v in r.get('resource_ids',[]))),'pdf_status':(existing or {}).get('pdf_status',{'status':'not_requested'}),
            'revision':(existing or {}).get('revision',0)+1,'evidence_path':path.relative_to(store.project).as_posix(),'evidence_sha256':digest(path)}
     value.pop('relation',None)
     store.db.execute('INSERT OR REPLACE INTO paper_records(id,identity_key,data,updated_at) VALUES(?,?,?,?)',(identifier,record['identity_key'],json_text(value),stamp()))
@@ -220,13 +323,52 @@ def save(store,record,domain_id=None):
         store.db.execute('UPDATE paper_records SET data=?,updated_at=? WHERE id=?',(json_text(alias),stamp(),prior['id']));store.event('paper_record',prior['id'],alias['revision'])
     return value
 def outcome(store,identifier,status,**details):
-    value=get(store,identifier);identifier=value['id'];value['pdf_status']={'status':status,'checked_at':stamp(),**details};value['revision']+=1
+    value=get(store,identifier);identifier=value['id']
+    prior=value.get('pdf_status',{})
+    # Background metadata attachment must not erase the successful lookup's
+    # diagnostics. A new full lookup replaces its own report; an attachment
+    # never brings a prior failed reason forward into an acquired result.
+    retained={k:prior[k] for k in ('full_text_policy','full_text_attempts','publisher_attempt') if k in prior} if status=='acquired' and prior.get('status')=='acquired' and 'full_text_attempts' not in details else {}
+    value['pdf_status']={'status':status,'checked_at':stamp(),**retained,**details};value['revision']+=1
     if details.get('resource_id'):value['resource_ids']=list(dict.fromkeys(value['resource_ids']+[details['resource_id']]))
     store.db.execute('UPDATE paper_records SET data=?,updated_at=? WHERE id=?',(json_text(value),stamp(),identifier));store.event('paper_record',identifier,value['revision']);return value
+def metadata_report(record, **details):
+    missing=[k for k in ('title','authors','year','venue','source_type') if not record.get(k)]
+    return {'policy':'publication_record_v2','independent_of_pdf':True,
+            'state':'verified' if record.get('metadata_status')=='verified' and not missing else 'partial',
+            'reason':'public_source_verified' if not missing else 'missing_fields',
+            'checked_at':record['latest_checked_at'],'source_url':record['source_url'],
+            'missing_fields':missing,'conflicting_fields':[],**details}
+
 def metadata(record):
     return {**{k:record[k] for k in FIELDS if k in record},'metadata_status':record['metadata_status'],'publication_status':record['publication_status'],
             'latest_checked_at':record['latest_checked_at'],'publication_record_id':record['id'],'publication_record':record,
+            'metadata_verification':metadata_report(record),
             'field_sources':{k:{'source':'independent_publication_record','url':record['source_url'],'retrieved_at':record['latest_checked_at'],'raw_response_path':record['evidence_path'],'raw_response_sha256':record['evidence_sha256'],'raw_value':record[k]} for k in FIELDS if record.get(k)}}
+
+def attach_metadata(store,record,resource_id,report=None):
+    """Apply the current search record without opening or certifying the PDF."""
+    resource=store.resource(resource_id)
+    if resource['type']!='paper':raise DomainError('scope_violation',409)
+    locks=resource['metadata'].get('field_sources',{})
+    update=metadata(record)
+    conflicts=[k for k in FIELDS if locks.get(k,{}).get('locked') and record.get(k)
+               and (resource['title'] if k=='title' else resource['metadata'].get(k))
+               and norm(str(resource['title'] if k=='title' else resource['metadata'][k]))!=norm(str(record[k]))]
+    update={k:v for k,v in update.items() if k not in FIELDS or not locks.get(k,{}).get('locked')}
+    update['field_sources']={k:v for k,v in update['field_sources'].items() if not locks.get(k,{}).get('locked')}
+    verification={**metadata_report(record),**(report or {})}
+    if conflicts:verification.update(state='partial',reason='locked_field_conflict',conflicting_fields=conflicts)
+    update.update(metadata_verification=verification,metadata_status='verified' if verification['state']=='verified' else 'partially_verified')
+    for field in ('metadata_verification','metadata_status','latest_checked_at','publication_record','publication_record_id','publication_status'):
+        update['field_sources'][field]={'source':'independent_publication_record','retrieved_at':record['latest_checked_at'],'url':record['source_url']}
+    result=store.update_resource(resource_id,{'base_revision':resource['revision'],**update})['resource']
+    # Citation membership is independent of the downloaded-file outcome.
+    if resource_id not in record.get('resource_ids',[]):
+        linked={**record,'resource_ids':[*record.get('resource_ids',[]),resource_id],'revision':record['revision']+1}
+        store.db.execute('UPDATE paper_records SET data=?,updated_at=? WHERE id=?',(json_text(linked),stamp(),record['id']))
+        store.event('paper_record',record['id'],linked['revision'])
+    return result
 def attach(store,record,resource_id,pdf_identity=None):
     from .institutional_access import validate_pdf
     resource=store.resource(resource_id)

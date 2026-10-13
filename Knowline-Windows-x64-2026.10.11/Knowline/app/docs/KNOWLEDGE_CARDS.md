@@ -23,3 +23,5 @@
 `app/kw.cmd jobs ingest` 先验证产物与事实证据。`app/kw.cmd knowledge-bases assemble <库ID> --job <任务ID> --if-revision <库revision>` 再验证卡片和图像、关联到层级并发布。只有 ready 索引、匹配的库版本、当前成员和资源版本能够组装。服务校验来源可追溯性，语义卡片标记为 Codex 整理、待审核。
 
 `app/kw.cmd knowledge-bases cards <库ID>` 读取卡片。可视化知识库的“知识卡片”页按层展示文字、图片、关联与来源按钮。`workspace/knowledge/<库ID>.json` 发布同一内容，窗口关闭后 Codex 也能读取。重建索引或改变资料使旧卡片失效，图片接口也随之拒绝读取旧卡片；历史文件保留便于追溯。
+
+新建任务的 v4 方法、主张级证据、多层归属、双路检索与方案验收见 [RESEARCH_V4.md](RESEARCH_V4.md) 和内置知识构建技能；上面的字段只描述兼容基础格式，不能替代新冻结任务的完整合同。

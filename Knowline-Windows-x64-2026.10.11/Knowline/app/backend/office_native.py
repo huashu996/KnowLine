@@ -119,9 +119,9 @@ def scope(store, job_id, body):
     working = target.with_name(target.stem + '.working.pptx')
     presentation = contained(store.project, body.get('presentation', ''))
     operation = body.get('operation')
-    if operation not in {'equations', 'audit'} or presentation not in {target, working}:
+    if operation not in {'equations', 'prepare', 'audit'} or presentation not in {target, working}:
         raise DomainError('office_native_scope_invalid', 409)
-    if operation == 'equations' and presentation != working:
+    if operation in {'equations', 'prepare'} and presentation != working:
         raise DomainError('office_native_working_copy_required', 409)
     manifest = contained(store.project, body.get('manifest', ''))
     for path in (presentation, manifest):
@@ -136,10 +136,18 @@ def scope(store, job_id, body):
     if not isinstance(payload, dict):
         raise DomainError('office_native_manifest_invalid')
     check(presentation, 'powerpoint')
-    if operation == 'equations':
+    from .document_quality import validate
+    validate(presentation,'powerpoint')
+    if operation in {'equations', 'prepare'}:
         equations = payload.get('equations')
-        if payload.get('mode') != 'Office' or not isinstance(equations, list) or not 1 <= len(equations) <= 100:
+        texts = payload.get('text_objects', [])
+        if payload.get('mode') != 'Office' or not isinstance(equations, list) or not (1 if operation=='equations' else 0) <= len(equations) <= 100:
             raise DomainError('office_native_manifest_invalid')
+        if not isinstance(texts, list) or len(texts)>1000 or not equations and not texts:
+            raise DomainError('office_native_manifest_invalid')
+        for item in texts:
+            if not isinstance(item,dict) or not isinstance(item.get('name'),str) or not 1<=len(item['name'])<=120 or not isinstance(item.get('resize_frame'),bool):
+                raise DomainError('office_native_manifest_invalid')
         for item in equations:
             if not isinstance(item, dict) or not isinstance(item.get('native_linear'), str) or not 1 <= len(item['native_linear']) <= 4000:
                 raise DomainError('office_native_manifest_invalid')
@@ -171,11 +179,11 @@ def run(store, job_id, body):
     if body.get('operation')=='render_word':return render_word(store,job_id,body)
     job, presentation, manifest, operation = scope(store, job_id, body)
     scripts = app_dir(store.project) / 'scripts/native-office'
-    script = scripts / ('run_office_pipeline.ps1' if operation == 'equations' else 'audit_powerpoint_native.ps1')
+    script = scripts / ('run_office_pipeline.ps1' if operation in {'equations','prepare'} else 'audit_powerpoint_native.ps1')
     shell = Path(os.environ.get('SystemRoot', 'C:/Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
     review = presentation.parent / ('native-working-review' if presentation.name.endswith('.working.pptx') else 'native-final-review')
     argv = [str(shell), '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', str(script)]
-    if operation == 'equations':
+    if operation in {'equations','prepare'}:
         argv += ['-ManifestPath', str(manifest), '-OutputPath', str(presentation)]
     else:
         argv += ['-PresentationPath', str(presentation), '-ManifestPath', str(manifest), '-OutputDirectory', str(review)]
@@ -200,7 +208,7 @@ def run(store, job_id, body):
                               audit_path=report_file.relative_to(store.project).as_posix() if report else None,
                               diagnostic_path=diagnostic.relative_to(store.project).as_posix())
         native_equations = check(presentation, 'powerpoint')
-        if operation == 'equations' and native_equations < len(json.loads(manifest.read_text('utf-8-sig'))['equations']):
+        if operation in {'equations','prepare'} and native_equations < len(json.loads(manifest.read_text('utf-8-sig'))['equations']):
             raise DomainError('office_native_equations_missing', 409)
         result = {'operation': operation, 'presentation': presentation.relative_to(store.project).as_posix(),
                   'native_equations': native_equations, 'desktop_service_execution': True}

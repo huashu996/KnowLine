@@ -19,16 +19,19 @@
 }
 ```
 
-字符串代表数学字符；数组代表依次并列，相乘的两个分式用两个 frac 并列。段落中的 math 和公式行的 equation 引用定义名；表达式中的 ref 可复用定义。保持原文顺序和编号，无法辨认处在正文标“待核对”并加入 uncertain。
+字符串代表数学字符；数组代表依次并列，相乘的两个分式用两个 frac 并列。段落中的 math 和公式行的 equation 接受定义名，或直接接受结构对象/数组；表达式中的 ref 可复用定义。重复符号定义一次，不复制深层结构；一次性表达式直接内联，例如 {"runs":["Where ",{"math":{"sub":["x","i"]}}," is known."]}。纯数学字符串须定义名称再引用，或内联 {"text":"i"}（正体）。不要另存一份识别原稿。保持原文顺序和编号，无法辨认处在正文标“待核对”并加入 uncertain。
 
 | 表达式 | 含义 |
 |---|---|
 | `{"sub":[base,index]}` / `{"sup":[base,index]}` | 上下标，仅 index 是脚标 |
 | `{"subsup":[base,lower,upper]}` | 同一基符号的联合上下标；嵌套 sup(sub(base,lower),upper) 也会生成此结构 |
+| `{"pre":[base,left_lower,left_upper]}` | 左脚标；可用空串省略一侧，两侧不能同时为空；基底可包含右侧脚标 |
+| `{"underbrace":[body,label]}` / `{"overbrace":[body,label]}` | 原生伸缩括注及下/上方标签 |
 | `{"frac":[numerator,denominator]}` | 分式 |
 | `{"root":body}` | 根号，可含并列数组 |
 | `{"sum":{"lower":"l=0","upper":"L","body":expression}}` | 求和，可在 body 嵌套求和 |
 | `{"integral":{"lower":"0","upper":"1","body":expression}}` | 积分 |
+| `{"product":{"lower":"k=i","upper":"j−1","body":expression}}` | 原生连乘及上下限 |
 | `{"delim":["(",body,")"]}` | 伸缩括号，支持 []、{}、绝对值及范数 |
 | `{"func":["cos",argument]}` | 正体函数 sin/cos/tan/log/ln/exp/min/max/lim/det |
 | `{"matrix":[[a,b],[c,d]]}` | 矩阵，可外包 delim |

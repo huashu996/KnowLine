@@ -39,12 +39,32 @@ def state(store,kb):
                 current=False;break
     latest=store.one("SELECT id,status,error FROM jobs WHERE json_extract(context,'$.scope.kb_id')=? AND task IN ('build_knowledge','update_knowledge') ORDER BY created_at DESC LIMIT 1",(kb['id'],))
     status='organized' if current else 'building_knowledge' if latest and latest['status'] in {'queued','running'} else 'knowledge_failed' if latest and latest['status'] in {'failed','interrupted','partial'} else 'awaiting_codex' if config else 'source_index'
-    return {'layers':config,'knowledge_state':status,'knowledge_job':latest,
+    from .knowledge_evidence import stale_dependencies
+    versions={r['id']:r['version_id'] for r in store.rows("SELECT id,version_id FROM resources WHERE state<>'deleted'")}
+    return {'layers':config,'knowledge_state':status,'knowledge_job':latest,'needs_revalidation':stale_dependencies(saved.get('cards',[]),versions),
             'retrieval':saved.get('retrieval') if current else None,'card_count':len(saved.get('cards',[])) if current else 0}
 
 
 def cards(store,kb):
     return get(store,'kb_cards:'+kb['id'],{}).get('cards',[]) if state(store,kb)['knowledge_state']=='organized' else []
+
+def refresh_retrieval(store,id,body):
+    """Reindex accepted analysis after a retrieval change, without calling AI."""
+    kb=store.kb(id);store.check(kb,body)
+    if kb.get('knowledge_state')!='organized':raise DomainError('knowledge_base_not_ready')
+    saved=get(store,'kb_cards:'+id,{})
+    if not saved.get('job_id') or not saved.get('cards'):raise DomainError('knowledge_analysis_required')
+    job=store.job(saved['job_id'])
+    validate_result(store,job,job['result'])
+    for artifact in job['result']['artifacts']:
+        if digest(contained(store.project,artifact['path']))!=artifact['sha256']:raise DomainError('artifact_hash_mismatch')
+    from .knowledge_retrieval import build
+    info=build(store,kb,saved['cards'],job['result']['knowledge_build_report'],job['context']['resources'])
+    info['analysis_contract']=job['context'].get('knowledge_build',{}).get('research_contract','legacy')
+    put(store,'kb_cards:'+id,{**saved,'retrieval':info})
+    store.db.execute('UPDATE knowledge_bases SET revision=revision+1 WHERE id=?',(id,))
+    store.event('knowledge_base',id,kb['revision']+1)
+    return store.kb(id)
 
 
 def assemble(store,id,body):
@@ -72,7 +92,7 @@ def assemble(store,id,body):
                 raise DomainError('revision_conflict',409)
         result={key:card[key] for key in ['id','layer_id','title','content','evidence']}
         result['origin']='codex';result['status']='needs_review';seen.add(card['id'])
-        for key in ['topic','claim_type','terms','aliases']:
+        for key in ['topic','claim_type','terms','aliases','layer_ids','card_kind','claims','method_profile','failure_signature','failure_details']:
             if key in card:result[key]=card[key]
         if 'figure' in card:
             figure=card['figure']
@@ -112,18 +132,20 @@ def assemble(store,id,body):
     if job['task'] in {'build_knowledge','update_knowledge'}:
         validate_result(store,job,job['result'])
         from .knowledge_retrieval import build
-        retrieval=build(store,kb,accepted,job['result']['knowledge_build_report'])
+        retrieval=build(store,kb,accepted,job['result']['knowledge_build_report'],job['context']['resources'])
     # Replace the visible raw directory/page hierarchy with actual user layers and knowledge.
     store.db.execute('DELETE FROM nodes WHERE kb_id=?',(id,))
     root=store.node(id,kb['build_id'],'root',None,'knowledge_base',kb['name'])
     for layer in kb['layers']:
         parent=store.node(id,kb['build_id'],'layer:'+layer['id'],root,'knowledge_layer',layer['name'])
         for card in accepted:
-            if card['layer_id']==layer['id']:
-                card['node_id']=store.node(id,kb['build_id'],'card:'+card['id'],parent,'figure' if card.get('figure') else 'knowledge_card',card['title'],card['evidence'])
+            if layer['id'] in card.get('layer_ids',[card['layer_id']]):
+                node_id=store.node(id,kb['build_id'],'card:'+card['id']+':'+layer['id'],parent,'figure' if card.get('figure') else 'knowledge_card',card['title'],card['evidence'])
+                card.setdefault('node_ids',[]).append(node_id)
+                if layer['id']==card['layer_id']:card['node_id']=node_id
     previous=get(store,'kb_cards:'+id,{})
     for card in previous.get('cards',[]):
-        if card.get('node_id') not in {c['node_id'] for c in accepted}:store.db.execute('DELETE FROM nodes WHERE id=?',(card.get('node_id'),))
+        if card.get('node_id') not in {n for c in accepted for n in c.get('node_ids',[c.get('node_id')])}:store.db.execute('DELETE FROM nodes WHERE id=?',(card.get('node_id'),))
     previous=get(store,'kb_cards:'+id,{})
     if previous:put(store,'kb_cards_history:'+id+':'+previous.get('build_id','initial'),previous)
     put(store,'kb_cards:'+id,{'build_id':kb['build_id'],'member_revision':kb['member_revision'],'job_id':job['id'],'cards':accepted,'retrieval':retrieval})
@@ -152,7 +174,7 @@ def prepare(store,job,job_dir):
         from .safety import atomic_json
         atomic_json(target,{'resource_id':r['resource_id'],'version_id':r['version_id'],'source_sha256':r['sha256'],'items':items})
         sources.append({'resource_id':r['resource_id'],'version_id':r['version_id'],'path':target.relative_to(store.project).as_posix(),'sha256':digest(target),'page_count':len(items) if r['type']=='paper' else None})
-    return {'pipeline':'codex_layered_knowledge_v3','prepared_sources':sources,'source_cache_hits':cache_hits,'preprocessing_is_completion':False,'time_limit_seconds':None,'retrieval_contract':'knowledge_units_bm25_fastembed_rrf','artifact_contract':'single-authored-analysis-v3','reference_read_only':None}
+    return {'research_contract':'evidence-to-experiment-v4','pipeline':'codex_layered_knowledge_v4','prepared_sources':sources,'source_cache_hits':cache_hits,'preprocessing_is_completion':False,'time_limit_seconds':None,'retrieval_contract':'dual_originals_cards_bm25_vector_rrf_rerank','artifact_contract':'single-authored-analysis-v4','reference_read_only':None}
 
 
 def validate_result(store,job,result):
@@ -163,7 +185,7 @@ def validate_result(store,job,result):
     coverage=report.get('layers',[])
     if len(coverage)!=len(layers) or {item.get('layer_id') for item in coverage}!=layers:raise DomainError('invalid_layers')
     for item in coverage:
-        subset=[c for c in values if c['layer_id']==item['layer_id']]
+        subset=[c for c in values if item['layer_id'] in c.get('layer_ids',[c['layer_id']])]
         if item.get('status')=='covered':
             if not subset or set(item.get('card_ids',[]))!={c['id'] for c in subset}:raise DomainError('invalid_knowledge_cards')
         elif item.get('status')!='insufficient_source' or not str(item.get('reason','')).strip():raise DomainError('invalid_layers')
@@ -183,6 +205,8 @@ def validate_result(store,job,result):
     if not isinstance(cases,list) or len(cases)<3:raise DomainError('knowledge_retrieval_eval_required')
     for case in cases:
         if not isinstance(case.get('query'),str) or not case['query'].strip() or not isinstance(case.get('expected_card_ids'),list) or not set(case['expected_card_ids'])<=ids:raise DomainError('knowledge_retrieval_eval_required')
+    from .research_contracts import knowledge as validate_research
+    validate_research(store,job,result)
 
 
 def figure_path(store,kb_id,card_id):

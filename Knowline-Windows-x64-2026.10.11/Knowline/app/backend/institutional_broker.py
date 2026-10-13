@@ -7,6 +7,8 @@ from .institutional_access import safe_url, normalize, paper_request
 from .safety import DomainError, atomic_json
 from .store import uid
 
+PUBLISHER_QUEUE_TIMEOUT_SECONDS=30
+
 
 class InstitutionalBroker:
     def __init__(self, manager, write, graph_operation=None):
@@ -16,7 +18,10 @@ class InstitutionalBroker:
         self.requests = {}
         self.public_blocks = {}
         self.public_locations = {}
-        self.acquisition_queue = asyncio.Lock()
+        # All brokers for this installation share the same browser queue,
+        # including concurrent graph prefetch, discovery and direct import.
+        if not hasattr(manager,'acquisition_queue'):manager.acquisition_queue=asyncio.Lock()
+        self.acquisition_queue = manager.acquisition_queue
         self.graph_candidates = {}  # Validated graph prefetch only; never caller-supplied scope.
         # Internal direct import only: the caller validates the frozen artifact,
         # selected IDs and revision on every transfer/write, without a new job.
@@ -34,7 +39,7 @@ class InstitutionalBroker:
         # Closing a worker/restarting the app keeps the isolated account profile.
         # Reopen that profile quietly only when a prior connection was ready;
         # a configured-but-never-logged-in site stays on the public route.
-        saved=(state.get('task_ready') or state.get('reason')=='subscription_denied') and (state.get('login_reported_at') or state.get('verified_pdf') or state.get('authentication_confirmed'))
+        saved=(state.get('task_ready') or state.get('reason')=='subscription_denied') and (state.get('verified_pdf') or state.get('authentication_confirmed'))
         if not state.get('online') and saved:
             await asyncio.to_thread(manager.connect,True)
             deadline=time.monotonic()+10
@@ -44,6 +49,13 @@ class InstitutionalBroker:
                 if state.get('online') and state.get('reason')!='browser_starting':break
                 if state.get('state') in {'expired','unconfigured'} or state.get('reason') in {'browser_process_failed','browser_event_failed','webview2_unavailable'}:break
                 await asyncio.sleep(.1)
+        if state.get('reason')=='browser_starting' and (state.get('verified_pdf') or state.get('authentication_confirmed')):
+            deadline=time.monotonic()+10
+            while time.monotonic()<deadline:
+                if not self.active(job_id):raise DomainError('originating_task_stopped',409)
+                state=manager.status()
+                if state.get('reason')!='browser_starting':break
+                await asyncio.sleep(.25)
         return state
 
     def scope(self, body, download=False):
@@ -106,7 +118,10 @@ class InstitutionalBroker:
         return {'status':'needs_user','reason':'browser_cancel_pending'}
 
     async def acquire(self,body):
-        async with self.acquisition_queue:return await self.acquire_one(body)
+        try:await asyncio.wait_for(self.acquisition_queue.acquire(),PUBLISHER_QUEUE_TIMEOUT_SECONDS)
+        except TimeoutError:raise DomainError('institution_queue_timeout',409)
+        try:return await self.acquire_one(body)
+        finally:self.acquisition_queue.release()
 
     async def acquire_one(self,body):
         job,config=self.scope(body,True)
@@ -120,16 +135,22 @@ class InstitutionalBroker:
                 await self.write('paper_record_pdf',clean,lambda:outcome(self.store,record['id'],status,**details))
         choices=paper.get('sources',[])
         if not isinstance(choices,list) or not 0<=len(choices)<=3 or any(not isinstance(c,dict) for c in choices):raise DomainError('institution_manifest_required')
-        if not self.manager.broker_lock.acquire(blocking=False):raise DomainError('institution_download_busy',409)
+        # The synchronous/manual client may own the lock. Busy is transient,
+        # not a failed article: wait within the article's bounded request.
+        deadline=time.monotonic()+30
+        while not self.manager.broker_lock.acquire(blocking=False):
+            if not self.active(job['id']):raise DomainError('originating_task_stopped',409)
+            if time.monotonic()>=deadline:raise DomainError('institution_queue_timeout',409)
+            await asyncio.sleep(.1)
         try:
             cached=(record or {}).get('public_download_sources',[])
-            from .research_policy import source_priority,institution_timeout
+            from .research_policy import source_priority,institution_timeout,authenticated_account,public_source
             publisher_only=body.get('publisher_only') is True
             choices=[c for c in choices if not publisher_only or c.get('public_oa') is not True]
             if not publisher_only:choices=[*choices,*[c for c in cached[:3] if c.get('access_url') not in {s.get('access_url') for s in choices}]]
             if record and record.get('publication_status')=='published' and record.get('latest_verified'):
-                from .research_import import choices as publication_choices
-                publisher=publication_choices({},record)[0]
+                from .research_import import publisher_source
+                publisher=publisher_source(record)
                 if not any(c.get('publisher_url')==publisher['publisher_url'] and c.get('public_oa') is not True for c in choices):choices.insert(0,publisher)
             choices=sorted(choices,key=lambda c:source_priority(c,record))
             failures=[];blocked=[];attempted=set()
@@ -173,13 +194,15 @@ class InstitutionalBroker:
                                 pause('public_locator_requires_user');continue
                             self.public_locations[location_key]=exc.code;failures.append(exc.code);continue
                 public=source.get('public_oa') is True
+                if public and not public_source(source,record):
+                    failures.append('publisher_open_access_not_verified');continue
                 source_url=safe_url(source.get('access_url') or source.get('publisher_url'),public_copy=public)
                 if source_url in attempted:continue
                 attempted.add(source_url)
                 public_host=urlsplit(source_url).hostname if public else None
                 if public:
                     from .research_download import permitted_public_host
-                    if not permitted_public_host(public_host,record):
+                    if not permitted_public_host(public_host,record,source_url):
                         failures.append('public_pdf_source_outside_policy');continue
                 if public_host in self.public_blocks:
                     pause(self.public_blocks[public_host]);continue
@@ -200,9 +223,11 @@ class InstitutionalBroker:
                     # for this one. Continue public lookup without a login prompt.
                     failures.append(exc.code);continue
                 self.manager.request_site_id=site_id
-                state=await self.resume_account(manager,job['id']) if manager else {}
-                if not public and (not state.get('online') or state.get('state') in {'unconfigured','awaiting_login','expired'}):
-                    failures.append('institution_not_connected' if not state.get('online') else 'institution_login_required:'+str(state.get('reason') or state.get('state')));continue
+                state=manager.status() if manager else {}
+                if manager and not authenticated_account(state) and state.get('verified_pdf') and state.get('state') not in {'expired','awaiting_login','unconfigured'}:
+                    state=await self.resume_account(manager,job['id'])
+                if not public and not authenticated_account(state):
+                    failures.append('publisher_not_authenticated_public_direct');continue
                 source_config=manager.status()['config'] if manager else {'method':'publisher','allowed_origins':[]}
                 if manager and manager.status().get('approval'):
                     pause('official_site_confirmation_required',site_id=site_id);continue

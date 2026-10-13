@@ -5,11 +5,21 @@ description: 为知序共享研究项目检索并导入指定领域的论文，�
 
 # 检索与导入知序论文
 
+现行全文策略为 `research_policy.fulltext_policy()` 的 `exact-paper-fulltext-v6`。必须与 `../knowline-paper-relations/SKILL.md` 同名小节一致：跨任务出版商下载共享队列并有界等待，先判断对应账户认证状态，未登录直接进入公开来源，仅已知 OA 出版页面可匿名定位 PDF，独立查询 arXiv 与 GitHub（一次精确题名仓库查询、最多 3 页），不局限预设作者仓库。明确正式 DOI 关联时接受受约束的作者全称／缩写；中文 PDF 核验完整作者姓名。每个文件实际身份校验后才登记，引用与 PDF 版本分别保存；索引限流、未发送请求、排队超时、身份冲突和本轮未定位全文分别报告。
+
+星图已有 11 篇“待获取”等缺项表示本轮未完成或未成功，不代表网上没有全文。重试只处理冻结选择且复用已取得的文件与证据，不重新检索整张图或创建逐篇审核任务。旧 `expand_search=False` 不限制同篇全文定位；它只限制主题候选扩展。同一获取规则不在本 skill 另写固定回退顺序。
+
+Google 学术正常网页可辅助核验题名、作者、年份、DOI；实际读取后保存页面 URL、时间和匹配依据，打开入口不算完成核验。正式发表以出版方和 DOI 注册记录为主，Google 学术引用次数单独标来源与日期。完整共享获取规则只定义在 `../knowline-paper-relations/SKILL.md` 的“书目核验与全文获取（exact-paper-fulltext-v6）”，不叠加旧回退顺序。
+
+用户已指定的 Sci-Hub 按上述共享规则作为第三方全文补充来源，在前述独立来源未取得 PDF 后自动追加为最后一个独立来源，每篇已核验 DOI 一次有界查找和已定位 PDF 的文件验收，不只是手动链接。后端配置默认 `https://sci-hub.ru`，标记 `public_oa=false`、`user_requested=true`、`source_provider= Sci-Hub`；它不属于开放许可 OA，也不用于正式发表、书目或引用数量核验。页面入口只使用后端返回的 `sci_hub_access.url`，不猜镜像。`full_text_sources` 按实际请求记录 Sci-Hub 的未查、未配置、已请求、已定位、已保存、失败或冷却状态；打开链接或定位 PDF 不等于已导入。文件仍匹配实际 DOI、题名、全部作者和版本后经公共单写服务登记。遇验证码、挑战、403 或 429 立即结束受限来源；不绕过验证码、付费、账户权限或访问限制，不轮换镜像反复尝试。失败只结束 PDF 获取，不删除论文节点、引用边或引用数，不给两个专职智能体追加审核任务。
+
 所有 PDF 获取入口使用同一账户规则：逐篇匹配出版商对应的网站会话，已登录则先获取该账户可访问的正式出版版；未登录、无对应账户或正式下载失败则直接查找并下载合法公开全文。别的网站已经登录不代表当前出版商已登录。公开下载不打开机构窗口，不要求为未登录账户确认新 PDF 站点；已验证本地 PDF 直接复用。正式书目与实际 PDF 版本分别记录。
 
 默认网址仍须 HTTPS；仅内置已实际核对的作者公开单文件及精确原下载别名支持匿名 HTTP。必须先保存本实例的官方 HTTPS 页面链接、正式身份关联与不可变来源证据，再核验实际 PDF；不自动降级 HTTPS、不扩大到其他 HTTP 地址，账户登录始终保持 HTTPS。
 
-获取优先级：先用 DOI、完整题名、作者核对出版方正式版本；正式 OA 也属于正式出版版。先执行 `app/kw.cmd institutional status`。配置机构后，论文检索、候选获取和关系图导入统一经 `app/kw.cmd institutional lookup --job <本任务ID> --url <批准站点稳定页面>` 与 `app/kw.cmd institutional acquire --job <本任务ID> --manifest <本任务清单JSON>`；服务复用用户在设置专用窗口中登录的同一 WebView2 会话，后台串行获取、校验并导入，不要求用户逐篇填表或登录。清单格式及有界范围见本任务 instructions 和 app/docs/INSTITUTIONAL_ACCESS.md；lookup 只返回固定书目字段，IEEE / WoS 检索权限不证明出版商 PDF 权限。优先匹配已授权出版源的正式版，再正式 OA，最后合法替代版本；返回 needs_user 时仅暂停受影响来源并说明实际原因，继续其他已授权且身份核实的独立公开来源。每篇先检查机构是否连接；机构未配置、未连接、正式全文获取失败或单次超时后，直接切换已定位、合法、已授权且有同篇身份关联证据的公开预印本，不等待登录，不重复请求失败出版源。公开 PDF 使用有界直接下载，不经学校登录窗口、不沿用机构 allowed_origins 的逐站确认。用户请求已授权的公开全文仅接受已核实出版方/明确仓库/作者高校来源，仍校验 HTTPS、公开目的地址、重定向边界和实际 PDF 身份；学校登录页的待审批不影响这些公开来源；真实挑战、403、429、未批准站点及身份冲突仍停止受影响来源，不绕过访问限制。机构未配置时沿用公开获取流程。codex exec 与 urllib 本身不共享该会话。不得访问或复制认证页面、专用/日常浏览器配置、Cookie、令牌或密码，不绕过付费墙、验证码或访问限制；禁止自动获取时改为用户合法手动下载后导入。替代必须写 fallback_reason；每条结果记录脱敏 publisher_url、access_method、pdf_version（published/accepted_manuscript/preprint/unknown）、pdf_version_basis、acquired_at。临时签名链接不写清单，JournalArticle 只是书目类型；实际 PDF 必须可解析并匹配身份，已有版本标注与批注不覆盖。机构设置只管理网站会话；普通资料区保留合法手动导入。
+程序自动候选获取和星图导入调用共享 `graph_fulltext.acquire_node`，按共同规则执行；机构访问的 CLI 仅处理相应出版商已授权会话，`institutional status/lookup/acquire` 不替代独立公开 PDF 路由。学校未配置、登录／验证／权限受阻或单次超时只影响该出版商，继续出版社公开页面、arXiv、GitHub 和作者高校来源。真实挑战和限流停止受影响站点，不自动重复或绕过；不会要求用户逐篇重新登录。
+
+账户操作复用设置中登录的同一 WebView2 会话，不读取或复制 Cookie、令牌、密码和浏览器配置。公开获取只接受有同篇身份依据的稳定 URL，保持 HTTPS、公开目的地址及重定向检查；稳定文章 ID 与临时签名／令牌参数分开。每个 PDF 下载、解析和身份核验后才登记；只找到链接或下载临时文件不等于正式入库。替代源写 fallback_reason，保存脱敏 publisher_url、access_method、pdf_version、pdf_version_basis 和 acquired_at；版本证据不足仍标 unknown，原文件、版本和批注不覆盖。
 
 在知序项目根执行；命令入口为 `app/kw.cmd`，资料快照为 `resource/workspace/catalog.json`。先按 catalog 的 domains 名称和 aliases 解析领域；“这个领域”读取 `app/kw.cmd project state`。重名或未选领域时澄清，不默认全库。
 
@@ -41,10 +51,16 @@ Word 用 source_type 仅接受 JournalArticle、ConferenceProceedings、Report�
 
 提交清单使用 schema_version=2、status=completed；部分成果另设 partial=true，并在 warnings 说明缺项。平台兼容 status=partial，但仍执行全部哈希、版本、PDF 与领域核验。artifacts 每项含项目相对 path 和真实 sha256，claims 和 proposed_relations 为数组。可用 `python app/scripts/research_finalize.py <context.json> <output_dir/analysis.json>` 对已写好的清单计算哈希与规范定稿；工具不替代研究或公共服务验收。
 
-import_graph_papers 由后端直接执行，不调用 智能体 搜索或另建核验智能体任务。只处理 paper_graph_selection.candidates，先核对冻结图哈希，每个候选恰好返回一条 imported_papers（candidate_id 使用候选 id）。按 import_destination.kind 选择资源库或冻结领域。重试优先复核本任务已有登记与已下载 PDF，通过公共资源接口核对版本及哈希后复用；失败项写实际 unavailable_reason。匹配已授权出版源时先尝试其正式全文，再依次采用正式 OA 和合法替代版本。候选导入同样无总时限，单次请求保留超时保护，不再生成关系图或探索程序源码。
+import_graph_papers 由后端直接执行，不调用 智能体 搜索或另建核验智能体任务。只处理 paper_graph_selection.candidates，先核对冻结图哈希，每个候选恰好返回一条 imported_papers（candidate_id 使用候选 id）。按 import_destination.kind 选择资源库或冻结领域。重试优先复核本任务已有登记与已下载 PDF，通过公共资源接口核对版本及哈希后复用；失败项写实际 unavailable_reason。对应账户在线且认证成功时先尝试其正式全文，未登录跳过订阅页面及下载请求，再依次采用正式 OA 和合法替代版本。候选导入同样无总时限，单次请求保留超时保护，不再生成关系图或探索程序源码。
 
-本版本来源与提速合同：优先复用本实例已验收的单篇身份、引用列表、摘要及实际 PDF；新发现使用官方公开引文接口；全文数量不足时的独立官方公开索引补充按上述冻结范围执行。公开来源本次无结果即停止该页，已发现候选与有界数量补足接口继续按实际剩余源处理，限流/挑战/不可访问明确区分，不另做全网发现；搜索片段不是原文摘要。PDF 只从已授权出版源、正式 OA、arXiv、学校/作者官方仓库页面获取；限定来源查不到就结束。固定 DOI/仓库接口核对已定位身份与最新正式记录；没有可用 PDF 链接或已定位源均失败时，服务先针对同一已核实 DOI 执行一次 Semantic Scholar 官方精确记录查询，核对 DOI、完整题名和全部作者，仅使用其已定位的合法作者/高校、出版方 OA 或主要公开仓库全文链接；再执行一次官方 arXiv 完整题名查询（最多 5 条返回），核对全部作者与明确正式 DOI/版本关联，再保存可复用来源并尝试实际下载。公开库索引不能替代原始仓库的版本与作者记录；缺少仓库正式 DOI 时，只能以唯一原始仓库完整题名、全部作者与独立核实的正式出版记录精确一致建立关联，不把这种证据标成仓库声明的 DOI。每来源一次、不分页、不全网遍历，确实穷尽才跳过该篇并记录原因。不得把相似题名当成关联，不重新检索论文名单；确无结果、身份冲突、超时或真实挑战逐篇如实记录，不因缺少预存链接就跳过公开全文定位。
+本版本来源与提速合同：全文使用上述共享 `exact-paper-fulltext-v6` 程序分支，先判对应账户认证，未登录直接走公开源；不另叠加“先访问出版社”或“先索引后 arXiv”的旧顺序。优先复用本实例已验收的身份、引用、摘要和实际 PDF；主题候选发现与同篇全文定位分开。PDF 来源包括已认证出版商、已知正式 OA、arXiv、GitHub 与作者／高校仓库。官方索引只提供同篇公开链接，不替代实际版本与作者核验。每来源一次且有界，限流／挑战／不可访问分别记录，不重新检索整张论文名单、反复审核或凑数。
 
 星图节点保存来源原文 abstract 和 abstract_source，以及稳定 download_sources 获取计划；缺摘要保持缺项。勾选后直接调用程序复用已核验记录和已有 PDF，必要时才下载，不再次运行智能体搜索。下载计划只说明来源已定位，真实 resource_id/version_id/sha256 才证明已导入。旧证据来源时间不改写，本轮最新核验和各阶段实际耗时独立记录。
 
 自动桥执行时，以任务提示中的自动回流规则为准：写 result.json 后退出，由知序执行 claim/ingest 与校验，不自行重复领取或提交。接入协议见 app/docs/LOCAL_AGENT.md。
+
+主要公开源本轮有界检查后未取得全文，记录已跳过本轮并处理下一篇，不等待反复审核。独立发现任务数量不足时沿已有有界同主题候选池替代，限流保留查询未完成原因；冻结星图选择不擅自换成别的论文。
+
+导入选中论文默认补查缺失PDF；仅复用缓存的调用必须明确本轮未查询。逐来源footprint区分已查无匹配、请求失败、冷却未发请求、尚未接入，不能一律称主要公开源已穷尽。
+
+星图保留规则：arXiv、GitHub、已指定的 Sci-Hub 等来源本轮未取得 PDF 就结束该篇下载，不删除或替换论文节点，不改已有真实引用关系及被引次数。各来源状态由实际足迹决定，不伪造检索或把查到链接写成已下载。result.partial 仅反映关系、身份或引用核验的缺项，PDF 缺项写 full_text_summary / pdf_completion_status。
