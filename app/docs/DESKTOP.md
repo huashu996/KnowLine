@@ -2,6 +2,8 @@
 
 将发行 ZIP 完整解压到可写目录，然后双击根目录的 `StartKnowline.cmd`。不要直接在压缩包中启动，也不要单独移动 `Knowline.exe`；它需要同目录的 `_internal` 运行库和 `app/dist` 界面文件。
 
+2026.10.14 起，启动入口先验证发行清单中的程序和 DLL，再处理已验证运行库的 Windows 下载来源标记，避免 .NET 拒绝加载 Python.Runtime.dll。首次出现“未知发布者”提示时，核对下载来源后点击“运行”。启动失败会保留错误信息；`StartKnowline.cmd -SelfTest` 可生成桌面自检报告。参见 [GitHub ZIP 启动修复](STARTUP_FIX_2026-10-14.md)。
+
 程序通过相对路径定位安装目录，无需原作者的电脑路径。首次启动会在本安装的 `resource` 中创建空数据库、设置和浏览器状态，任务成果写入 `outputs`。默认服务端口为 21867；首次启动时若被其他程序占用，桌面入口会选择可用端口并保存本实例配置。
 
 命令行入口为 `app/kw.cmd`，仅启动本地服务可用 `app/StartServer.cmd`。本地智能体由各用户按照 [LOCAL_AGENT.md](LOCAL_AGENT.md) 连接自己的客户端。

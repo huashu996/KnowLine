@@ -1,31 +1,36 @@
 {
   "schema_version": 1,
   "product": "Knowline",
-  "release": "2026.10.13-blank",
+  "release": "2026.10.14-blank-startup-fix",
   "platform": "Windows x64",
   "created_at": "2026-10-13T07:28:11.998693+00:00",
   "distribution": "empty installation; software only",
   "archive_top_directory": "Knowline",
-  "startup_verified": false,
-  "functional_tests": "not_run_at_user_request",
+  "startup_verified": true,
+  "functional_tests": "Windows desktop startup and five startup regression tests; other research features not rerun",
   "canonical_executable": {
     "path": "app/Knowline/Knowline.exe",
     "bytes": 17372444,
     "sha256": "6ea060db4c7ddbe436031238f948c499ca42fc903a8d9370ad4334bfb5a0dd2a"
   },
-  "file_count_excluding_manifest": 1655,
-  "uncompressed_bytes_excluding_manifest": 328334427,
+  "file_count_excluding_manifest": 1659,
+  "uncompressed_bytes_excluding_manifest": 328348904,
   "manifest_self_hash_excluded": true,
   "files": [
     {
+      "path": ".gitattributes",
+      "bytes": 91,
+      "sha256": "edd45e2c71adffcbfe2c4266b7070ec46afe32ee2d370599df17e26072a9f904"
+    },
+    {
       "path": "README.md",
-      "bytes": 11902,
-      "sha256": "5ff371dc948bfd92e74531779bf1143e19869f4970ae9d6747cbbf50d2c75260"
+      "bytes": 12213,
+      "sha256": "02fbf1b22836c9160e47a7b024e4b4d8062fe895bdf494515f063bbb2163563f"
     },
     {
       "path": "StartKnowline.cmd",
-      "bytes": 75,
-      "sha256": "8dd61cf5af2e7df9f6981e33ad7b18dcb0954ea149e67451610b76a1d36e8a58"
+      "bytes": 375,
+      "sha256": "f13e9889010a7de4f974d8073b3764dfff88002f8812518b617fbb130b257481"
     },
     {
       "path": "app/.gitattributes",
@@ -6333,6 +6338,11 @@
       "sha256": "4fd0e84f50261ed0886cffcdd8008b055af3352546e649c3d741b50eae1f9b5f"
     },
     {
+      "path": "app/StartKnowline.ps1",
+      "bytes": 6049,
+      "sha256": "8fc351089ddd5a6dee6b2d0e0feb98de32ef48c3f6d058167c8192333d18edee"
+    },
+    {
       "path": "app/StartServer.cmd",
       "bytes": 75,
       "sha256": "e8a35165ab1e0de4b9b933a521407451d338f37f5e8a36f17b098497d645404b"
@@ -7194,8 +7204,8 @@
     },
     {
       "path": "app/docs/DESKTOP.md",
-      "bytes": 2048,
-      "sha256": "42d810f3c9a3323743a27abcee7bae70f906b1f70ba52733b978a8965bd952e8"
+      "bytes": 2473,
+      "sha256": "952073d7915d2f2bbb0537a09c98a58e17ca47f3e13f694ca499fc10d9f724dd"
     },
     {
       "path": "app/docs/INSTITUTIONAL_ACCESS.md",
@@ -7246,6 +7256,11 @@
       "path": "app/docs/RESEARCH_V4.md",
       "bytes": 5396,
       "sha256": "907ddef975657993953f0ef2c44d4e36ef95a7197ee5c2d54078d8e643682160"
+    },
+    {
+      "path": "app/docs/STARTUP_FIX_2026-10-14.md",
+      "bytes": 2883,
+      "sha256": "ad6af8a1d9e3821ecd1fcfb5c4ad7cfbc0b6d7af6bcb25c7cb6f4f58f7b5b410"
     },
     {
       "path": "app/docs/THIRD_PARTY_NOTICES.md",
@@ -8283,14 +8298,19 @@
       "sha256": "6b9172d6c490b07af5c120197dd744b9ee8224ed009d86471e1417d82af9a1e6"
     },
     {
+      "path": "app/tests/test_windows_startup.py",
+      "bytes": 4414,
+      "sha256": "01a354bcdc64fb9a02ad03536ae0266064a211f8fc86b44f4f5637d7a10f642e"
+    },
+    {
       "path": "outputs/.gitignore",
-      "bytes": 14,
-      "sha256": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d"
+      "bytes": 16,
+      "sha256": "4bb38be6d6d9ef0d2f9bcc339850ff48d821eccfa739369402b354c9ba946ea2"
     },
     {
       "path": "resource/.gitignore",
-      "bytes": 14,
-      "sha256": "240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d"
+      "bytes": 16,
+      "sha256": "4bb38be6d6d9ef0d2f9bcc339850ff48d821eccfa739369402b354c9ba946ea2"
     }
   ],
   "graph_workflow_update": {
@@ -8337,7 +8357,15 @@
     "live_login_entry_no_site_approval": true,
     "account_authentication_tested": false
   },
-  "updated_at": "2026-10-13T16:45:45.315227+00:00",
+  "updated_at": "2026-10-14T06:01:44.683819+00:00",
   "repository_layout": "app/, outputs/, resource/, README.md, StartKnowline.cmd at repository root",
-  "data_directories": "GitHub contains only .gitignore placeholders; no runtime data or connections included"
+  "data_directories": "GitHub contains only .gitignore placeholders; no runtime data or connections included",
+  "startup_verification": {
+    "original_download_failure": "Failed to resolve Python.Runtime.Loader.Initialize",
+    "repaired_downloaded_desktop_self_test": "passed",
+    "renderer": "edgechromium",
+    "navigation_sections": 6,
+    "startup_regression_tests": 5,
+    "unblocks_only_verified_packaged_dlls": true
+  }
 }
